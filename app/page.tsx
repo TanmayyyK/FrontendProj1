@@ -62,6 +62,8 @@ const OPEN_WHEN_MESSAGES = [
     { id: "tired", label: "FEELING TIRED", icon: <Smile size={14} />, color: "bg-purple-900/40 border-purple-500/30", text: "Rest now, Dr. The world can wait. (Or Call me I will Listen to you..)" }
 ];
 
+const DAILY_SONGS = [ { title: "Perfect", artist: "Ed Sheeran" }, { title: "Tum Se Hi", artist: "Mohit Chauhan" }, { title: "Lover", artist: "Taylor Swift" }, { title: "Raataan Lambiyan", artist: "Jubin Nautiyal" }, { title: "Kesariya", artist: "Arijit Singh" } ];
+
 // --- HELPERS ---
 const calculateTimeLeft = (targetDate: string) => {
     const difference = +new Date(targetDate) - +new Date();
@@ -78,28 +80,45 @@ const calculateTimeLeft = (targetDate: string) => {
 
 // --- ISOLATED COMPONENTS ---
 
-// Updated Music Player: Starts only when 'shouldPlay' is true
+// Updated Music Player
 const MusicPlayer = ({ shouldPlay }: { shouldPlay: boolean }) => {
     const [isPlaying, setIsPlaying] = useState(false);
     const audioRef = useRef<HTMLAudioElement>(null);
 
-    // Trigger Play when loading finishes
+    // This effect handles the Auto-Start logic
     useEffect(() => {
-        if (shouldPlay && audioRef.current) {
-            const playPromise = audioRef.current.play();
-            if (playPromise !== undefined) {
-                playPromise
-                    .then(() => {
-                        setIsPlaying(true);
-                        // Smooth fade in
-                        if(audioRef.current) audioRef.current.volume = 0.4;
-                    })
-                    .catch(error => {
-                        console.log("Autoplay blocked by browser. User interaction needed.", error);
-                        setIsPlaying(false); 
-                    });
-            }
+        const audio = audioRef.current;
+        if (!audio) return;
+
+        // --- VOLUME CONTROL ---
+        // 0.1 = 10% Volume (Very Soft)
+        // 0.5 = 50% Volume
+        // 1.0 = 100% Volume
+        audio.volume = 0.5; // <--- EDIT HERE FOR VOLUME
+
+        const attemptPlay = () => {
+            audio.play().then(() => {
+                setIsPlaying(true);
+                // Remove listeners if play succeeded
+                document.removeEventListener('click', attemptPlay);
+                document.removeEventListener('touchstart', attemptPlay);
+            }).catch(() => {
+                // Autoplay blocked: Waiting for user interaction
+                setIsPlaying(false);
+            });
+        };
+
+        if (shouldPlay) {
+            attemptPlay();
+            // Add fallback listeners for browsers that block autoplay
+            document.addEventListener('click', attemptPlay, { once: true });
+            document.addEventListener('touchstart', attemptPlay, { once: true });
         }
+
+        return () => {
+            document.removeEventListener('click', attemptPlay);
+            document.removeEventListener('touchstart', attemptPlay);
+        };
     }, [shouldPlay]);
 
     // Manual Toggle
@@ -123,7 +142,7 @@ const MusicPlayer = ({ shouldPlay }: { shouldPlay: boolean }) => {
                 <Disc size={24} className="text-zinc-400 group-hover:text-white transition-colors" />
                 {isPlaying && <div className="absolute w-2 h-2 bg-rose-500 rounded-full top-0 right-0 animate-pulse border border-black" />}
             </div>
-            {/* Added preload="auto" for faster loading */}
+            {/* preload="auto" ensures it downloads immediately */}
             <audio ref={audioRef} loop src="/bg3.mp3" preload="auto" />
         </button>
     );
@@ -439,8 +458,8 @@ function HubContent() {
           <div className="w-full h-full overflow-y-auto custom-scrollbar px-4 pt-24 pb-24">
               <div className="w-full max-w-4xl mx-auto">
                 <div className="flex flex-col md:flex-row justify-between items-end mb-12 border-b border-rose-900/30 pb-6 gap-4">
-                    <div><p className={`text-rose-500 text-xs font-bold tracking-[0.2em] ${techMono.className} mb-2`}>EST. 2025</p><h2 className={`text-4xl text-white ${playfair.className}`}>My Daily Dose of You</h2></div>
-                    <div className="text-left md:text-right"><p className="text-rose-500/60 text-xs uppercase tracking-widest mb-1">Current Status</p><p className="text-green-400 text-sm font-mono tracking-widest flex items-center gap-2"><span className="w-2 h-2 bg-green-500 rounded-full animate-pulse"></span>COUNTING SECONDS</p></div>
+                    <div><p className={`text-rose-500 text-xs font-bold tracking-[0.2em] ${techMono.className} mb-2`}>EST. 2025</p><h2 className={`text-4xl text-white ${playfair.className}`}>A Little Love, Daily</h2></div>
+                    <div className="text-left md:text-right"><p className="text-rose-500/60 text-xs uppercase tracking-widest mb-1">Right Now</p><p className="text-green-400 text-sm font-mono tracking-widest flex items-center gap-2"><span className="w-2 h-2 bg-green-500 rounded-full animate-pulse"></span>Thinking About You</p></div>
                 </div>
                 <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mb-16">
                     {DAYS.map((day) => {
@@ -471,7 +490,7 @@ function HubContent() {
                     );
                     })}
                 </div>
-                <div className="w-full pb-12"><div className="flex items-center gap-4 mb-6"><div className="h-[1px] bg-rose-900/50 flex-1" /><span className={`text-rose-500/50 text-xs uppercase tracking-widest ${techMono.className}`}>The Grand Finale</span><div className="h-[1px] bg-rose-900/50 flex-1" /></div><button id="premiere-ticket" onClick={handlePremiereClick} className={`w-full group relative overflow-hidden rounded-2xl border p-6 md:p-10 transition-all duration-500 ${isMovieLocked ? "bg-gray-900/20 border-white/5 cursor-not-allowed hover:border-red-500/30" : "bg-gray-900/40 border-rose-500/30 hover:border-rose-500 hover:shadow-[0_0_30px_rgba(225,29,72,0.15)]"}`}><div className={`flex flex-col md:flex-row items-center justify-between gap-6 relative z-10 transition-all duration-500 ${isMovieLocked ? "blur-sm opacity-30 grayscale" : ""}`}><div className="flex items-center gap-6"><div className="w-20 h-20 rounded-full bg-rose-950 flex items-center justify-center border border-rose-500/20 text-4xl shadow-inner">🎬</div><div className="text-left"><h3 className={`text-2xl md:text-4xl text-white font-bold ${playfair.className}`}>The Tanya Movie</h3><p className="text-rose-400 text-xs uppercase tracking-widest mt-2">A Visual Journey • 20 Photos</p></div></div><div className="text-right hidden md:block"><p className={`text-xs text-gray-500 uppercase tracking-widest mb-1 ${techMono.className}`}>Premiere Date</p><p className="text-xl md:text-3xl font-bold text-white">FEB 14, 2026</p></div></div>{isMovieLocked && (<div className="absolute inset-0 z-20 flex flex-col items-center justify-center bg-black/40 backdrop-blur-[2px]"><div className="bg-black/80 px-6 py-3 rounded-full border border-rose-500/50 flex items-center gap-3"><span className="animate-pulse">🔒</span><div className="flex flex-col items-start"><p className={`text-rose-500 text-xs uppercase tracking-[0.2em] font-bold ${techMono.className}`}>LOCKED</p><p className="text-white/60 text-[10px] uppercase tracking-widest">Opens Feb 14</p></div></div></div>)}</button></div>
+                <div className="w-full pb-12"><div className="flex items-center gap-4 mb-6"><div className="h-[1px] bg-rose-900/50 flex-1" /><span className={`text-rose-500/50 text-xs uppercase tracking-widest ${techMono.className}`}>Valentine's Day</span><div className="h-[1px] bg-rose-900/50 flex-1" /></div><button id="premiere-ticket" onClick={handlePremiereClick} className={`w-full group relative overflow-hidden rounded-2xl border p-6 md:p-10 transition-all duration-500 ${isMovieLocked ? "bg-gray-900/20 border-white/5 cursor-not-allowed hover:border-red-500/30" : "bg-gray-900/40 border-rose-500/30 hover:border-rose-500 hover:shadow-[0_0_30px_rgba(225,29,72,0.15)]"}`}><div className={`flex flex-col md:flex-row items-center justify-between gap-6 relative z-10 transition-all duration-500 ${isMovieLocked ? "blur-sm opacity-30 grayscale" : ""}`}><div className="flex items-center gap-6"><div className="w-20 h-20 rounded-full bg-rose-950 flex items-center justify-center border border-rose-500/20 text-4xl shadow-inner">🎬</div><div className="text-left"><h3 className={`text-2xl md:text-4xl text-white font-bold ${playfair.className}`}>The Tanya Movie</h3><p className="text-rose-400 text-xs uppercase tracking-widest mt-2">A Visual Journey • 20 Photos</p></div></div><div className="text-right hidden md:block"><p className={`text-xs text-gray-500 uppercase tracking-widest mb-1 ${techMono.className}`}>Premiere Date</p><p className="text-xl md:text-3xl font-bold text-white">FEB 14, 2026</p></div></div>{isMovieLocked && (<div className="absolute inset-0 z-20 flex flex-col items-center justify-center bg-black/40 backdrop-blur-[2px]"><div className="bg-black/80 px-6 py-3 rounded-full border border-rose-500/50 flex items-center gap-3"><span className="animate-pulse">🔒</span><div className="flex flex-col items-start"><p className={`text-rose-500 text-xs uppercase tracking-[0.2em] font-bold ${techMono.className}`}>LOCKED</p><p className="text-white/60 text-[10px] uppercase tracking-widest">14th Feb</p></div></div></div>)}</button></div>
               </div>
           </div>
         </div>

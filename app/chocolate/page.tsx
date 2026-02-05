@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect, useRef } from "react";
+import { useState, useEffect, useRef, useCallback } from "react";
 import { useRouter } from "next/navigation";
 import gsap from "gsap";
 import { Playfair_Display, Lato, Share_Tech_Mono, Titan_One } from "next/font/google";
@@ -16,20 +16,29 @@ export default function ChocolatePage() {
   const router = useRouter();
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const containerRef = useRef<HTMLDivElement>(null);
+  const meterRef = useRef<HTMLInputElement>(null);
   
-  // State
+  // --- STATES ---
+  const [gameStage, setGameStage] = useState<"meter" | "incoming" | "scratch" | "claimed">("meter"); 
+  const [meterValue, setMeterValue] = useState(0); 
   const [isRevealed, setIsRevealed] = useState(false);
-  const [showFinalMessage, setShowFinalMessage] = useState(false);
-  const [showMessageModal, setShowMessageModal] = useState(false);
-  const [showToast, setShowToast] = useState(false); // NEW: Easter Egg State
+  
+  // FIX: New state to prevent "flash" of content before wrapper draws
+  const [isWrapperReady, setIsWrapperReady] = useState(false);
 
-  // --- 1. Background Floating Oreos ---
-  useEffect(() => {
-    const ctx = gsap.context(() => {
-      for (let i = 0; i < 20; i++) {
-        const crumb = document.createElement("div");
-        crumb.className = "oreo-crumb";
-        const type = Math.random();
+  const [showMessageModal, setShowMessageModal] = useState(false);
+  const [showToast, setShowToast] = useState(false);
+
+  // --- Helper: Create Crumbs ---
+  const createCrumb = useCallback((forceExplosion = false) => {
+    const crumb = document.createElement("div");
+    crumb.className = "oreo-crumb";
+    const type = Math.random();
+    
+    if (forceExplosion) {
+        crumb.innerHTML = ["🍫", "🍬", "🍪", "🍩"][Math.floor(Math.random() * 4)];
+        crumb.style.fontSize = `${Math.random() * 40 + 30}px`;
+    } else {
         if (type > 0.7) {
             crumb.innerHTML = "🍪"; 
             crumb.style.fontSize = `${Math.random() * 30 + 20}px`;
@@ -44,78 +53,158 @@ export default function ChocolatePage() {
             crumb.style.backgroundColor = "#ffffff"; 
             crumb.style.borderRadius = "50%";
         }
-        crumb.style.position = "absolute";
-        crumb.style.left = `${Math.random() * 100}%`;
-        crumb.style.top = `-10%`; 
-        crumb.style.opacity = "0.5";
-        crumb.style.pointerEvents = "none";
-        containerRef.current?.appendChild(crumb);
+    }
 
+    crumb.style.position = "absolute";
+    crumb.style.left = forceExplosion ? "50%" : `${Math.random() * 100}%`;
+    crumb.style.top = forceExplosion ? "50%" : `-10%`; 
+    crumb.style.opacity = forceExplosion ? "1" : "0.5";
+    crumb.style.pointerEvents = "none";
+    crumb.style.zIndex = "0"; 
+    containerRef.current?.appendChild(crumb);
+
+    if (forceExplosion) {
         gsap.to(crumb, {
-          y: "110vh", 
-          rotation: `random(0, 720)`,
-          duration: `random(5, 15)`,
-          ease: "linear",
-          repeat: -1,
-          delay: `random(0, 10)`
+            x: `random(-500, 500)`,
+            y: `random(-500, 500)`,
+            rotation: `random(0, 720)`,
+            duration: 2,
+            ease: "power4.out",
+            opacity: 0,
+            onComplete: () => crumb.remove()
         });
+    } else {
+        gsap.to(crumb, {
+            y: "110vh", 
+            rotation: `random(0, 720)`,
+            duration: `random(5, 15)`,
+            ease: "linear",
+            repeat: -1,
+            delay: `random(0, 10)`
+        });
+    }
+  }, []);
+
+  // --- 1. Background Floating Oreos ---
+  useEffect(() => {
+    const ctx = gsap.context(() => {
+      for (let i = 0; i < 20; i++) {
+        createCrumb();
       }
     }, containerRef);
     return () => ctx.revert();
-  }, []);
+  }, [createCrumb]);
 
-  // --- 2. Initialize Canvas ---
+  // --- 2. Initialize Canvas (Only when stage is 'scratch') ---
   useEffect(() => {
-    const canvas = canvasRef.current;
-    if (!canvas) return;
-    const ctx = canvas.getContext("2d");
-    if (!ctx) return;
+    if (gameStage !== "scratch") return;
 
-    const parent = canvas.parentElement;
-    if (parent) {
-      canvas.width = parent.clientWidth;
-      canvas.height = parent.clientHeight;
+    // Reduced timeout to 0 for instant execution, but kept for execution stack order
+    const timer = setTimeout(() => {
+        const canvas = canvasRef.current;
+        if (!canvas) return;
+        const ctx = canvas.getContext("2d");
+        if (!ctx) return;
+
+        const parent = canvas.parentElement;
+        if (parent) {
+            canvas.width = parent.clientWidth;
+            canvas.height = parent.clientHeight;
+        }
+
+        const drawWrapper = () => {
+            ctx.fillStyle = "#3e005f"; 
+            ctx.fillRect(0, 0, canvas.width, canvas.height);
+
+            ctx.save();
+            ctx.translate(canvas.width / 2, canvas.height / 2);
+            ctx.rotate(-Math.PI / 12); 
+            ctx.textAlign = "center";
+            
+            ctx.shadowColor = "rgba(0,0,0,0.3)";
+            ctx.shadowBlur = 10;
+            ctx.shadowOffsetX = 5;
+            ctx.shadowOffsetY = 5;
+
+            ctx.font = "bold 30px Arial";
+            ctx.fillStyle = "#fbbf24"; 
+            ctx.fillText("TANYA'S SPECIAL", 0, -40);
+            
+            ctx.font = "bold 50px Arial";
+            ctx.fillStyle = "#ffffff"; 
+            ctx.fillText("DAIRY MILK", 0, 20);
+
+            ctx.font = "bold 24px Arial";
+            ctx.fillStyle = "#60a5fa"; 
+            ctx.fillText("OREO EDITION", 0, 70);
+            
+            ctx.restore();
+
+            ctx.font = "14px monospace";
+            ctx.fillStyle = "rgba(255,255,255,0.6)";
+            ctx.textAlign = "center";
+            ctx.fillText("✨ SCRATCH ME ✨", canvas.width / 2, canvas.height - 40);
+        };
+
+        drawWrapper();
+        ctx.globalCompositeOperation = "destination-out";
+        
+        // FIX: Only reveal the content BEHIND the wrapper once the wrapper is drawn
+        setIsWrapperReady(true);
+
+        gsap.fromTo(".scratch-card-container", 
+            { scale: 0, rotation: -20 },
+            { scale: 1, rotation: 0, duration: 0.8, ease: "elastic.out(1, 0.5)" }
+        );
+
+    }, 50);
+
+    return () => clearTimeout(timer);
+  }, [gameStage]);
+
+  // --- 3. TRANSITION LOGIC ---
+  const triggerExplosion = () => {
+      for(let i=0; i<30; i++) createCrumb(true); 
+      gsap.to(containerRef.current, { 
+        keyframes: { x: [-10, 10, -10, 10, 0] },
+        duration: 0.4 
+      });
+      setGameStage("scratch");
+  };
+
+  useEffect(() => {
+      if (gameStage === "incoming") {
+          const timer = setTimeout(() => {
+              triggerExplosion();
+          }, 4500);
+          return () => clearTimeout(timer);
+      }
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [gameStage]);
+
+  // --- 4. METER LOGIC ---
+  const handleSliderChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    let val = parseInt(e.target.value);
+    setMeterValue(val);
+
+    if (val > 50 && gameStage === 'meter') {
+        if(meterRef.current) meterRef.current.disabled = true;
+        const obj = { v: val };
+        gsap.to(obj, {
+            v: 100,
+            duration: 0.5,
+            ease: "power2.out",
+            onUpdate: () => setMeterValue(Math.round(obj.v)),
+            onComplete: () => {
+                setTimeout(() => {
+                    setGameStage("incoming");
+                }, 3000);
+            }
+        });
     }
+  };
 
-    const drawWrapper = () => {
-        ctx.fillStyle = "#3e005f"; 
-        ctx.fillRect(0, 0, canvas.width, canvas.height);
-
-        ctx.save();
-        ctx.translate(canvas.width / 2, canvas.height / 2);
-        ctx.rotate(-Math.PI / 12); 
-        ctx.textAlign = "center";
-        
-        ctx.shadowColor = "rgba(0,0,0,0.3)";
-        ctx.shadowBlur = 10;
-        ctx.shadowOffsetX = 5;
-        ctx.shadowOffsetY = 5;
-
-        ctx.font = "bold 30px Arial";
-        ctx.fillStyle = "#fbbf24"; 
-        ctx.fillText("TANYA'S SPECIAL", 0, -40);
-        
-        ctx.font = "bold 50px Arial";
-        ctx.fillStyle = "#ffffff"; 
-        ctx.fillText("DAIRY MILK", 0, 20);
-
-        ctx.font = "bold 24px Arial";
-        ctx.fillStyle = "#60a5fa"; 
-        ctx.fillText("OREO EDITION", 0, 70);
-        
-        ctx.restore();
-
-        ctx.font = "14px monospace";
-        ctx.fillStyle = "rgba(255,255,255,0.6)";
-        ctx.textAlign = "center";
-        ctx.fillText("✨ SCRATCH ME ✨", canvas.width / 2, canvas.height - 40);
-    };
-
-    drawWrapper();
-    ctx.globalCompositeOperation = "destination-out";
-  }, []);
-
-  // --- 3. Scratch Logic ---
+  // --- 5. Scratch Logic ---
   const handleScratch = (e: any) => {
     if (isRevealed) return;
     const canvas = canvasRef.current;
@@ -143,15 +232,15 @@ export default function ChocolatePage() {
     }
   };
 
-  // --- 4. Claim Logic ---
+  // --- 6. Claim Logic ---
   const handleClaim = () => {
-    setShowFinalMessage(true);
+    setGameStage("claimed");
     setTimeout(() => {
         router.push("/");
     }, 6000);
   };
 
-  // --- 5. Easter Egg Handler ---
+  // --- 7. Easter Egg Handler ---
   const handleEasterEgg = () => {
     setShowToast(true);
     setTimeout(() => {
@@ -165,7 +254,6 @@ export default function ChocolatePage() {
       className={`relative w-full h-screen overflow-hidden bg-[#1a0b2e] text-white flex flex-col items-center justify-center ${lato.className}`}
     >
       
-      {/* ================= EASTER EGG TOAST ================= */}
       {showToast && (
         <div className="fixed top-20 z-[100] animate-in fade-in slide-in-from-top-5 duration-300">
             <div className="bg-[#fffbf0] text-[#3e005f] px-6 py-3 rounded-full shadow-[0_0_20px_rgba(251,191,36,0.6)] border-2 border-[#fbbf24] flex items-center gap-2">
@@ -176,15 +264,62 @@ export default function ChocolatePage() {
         </div>
       )}
 
-      {/* ================= FINAL MESSAGE SCREEN ================= */}
-      {showFinalMessage && (
+      {/* ================= STAGE 1: THE SWEETNESS METER ================= */}
+      {gameStage === "meter" && (
+          <div className="z-20 flex flex-col items-center text-center p-6 animate-in zoom-in duration-700 w-full max-w-md">
+              <h2 className={`text-4xl md:text-5xl text-[#fbbf24] mb-8 ${titan.className} drop-shadow-lg`}>
+                  Sweetness Check! 
+              </h2>
+              <p className="text-white/80 mb-12 text-lg">How sweet is my Tanya today?</p>
+              
+              <div className="relative w-full h-16 bg-white/10 rounded-full border-4 border-white/20 p-2 shadow-[0_0_30px_rgba(251,191,36,0.3)]">
+                  <div className="absolute top-2 bottom-2 left-2 rounded-full bg-gradient-to-r from-rose-500 via-[#fbbf24] to-white transition-all duration-100" 
+                       style={{ width: `${meterValue}%` }} />
+                  <input 
+                    ref={meterRef}
+                    type="range" 
+                    min="0" 
+                    max="100" 
+                    value={meterValue}
+                    onChange={handleSliderChange}
+                    className="absolute inset-0 w-full h-full opacity-0 cursor-pointer z-20"
+                  />
+                  <div className="absolute inset-0 flex items-center justify-center pointer-events-none z-10">
+                      <span className={`text-2xl font-bold ${titan.className} drop-shadow-md ${meterValue > 90 ? 'text-[#3e005f] animate-bounce' : 'text-white'}`}>
+                          {meterValue}%
+                      </span>
+                  </div>
+              </div>
+
+              <div className="mt-8 h-8">
+                  {meterValue > 90 ? (
+                      <p className="text-red-400 font-bold tracking-widest animate-pulse text-xl">Come On You are 100% Sweet Everyday</p>
+                  ) : (
+                      <p className="text-white/50 text-sm">Drag right to measure...</p>
+                  )}
+              </div>
+          </div>
+      )}
+
+      {/* ================= STAGE 1.5: CHOCOLATE INCOMING ================= */}
+      {gameStage === "incoming" && (
+        <div className="fixed inset-0 z-50 flex flex-col items-center justify-center bg-black animate-in fade-in duration-1000">
+            <h1 className={`text-4xl md:text-6xl text-[#a855f7] mb-4 text-center px-4 leading-tight animate-pulse ${titan.className}`}>
+                Chocolate Incoming...
+            </h1>
+            <div className="text-6xl animate-bounce mt-4">🍫</div>
+        </div>
+      )}
+
+      {/* ================= STAGE 3: FINAL MESSAGE SCREEN ================= */}
+      {gameStage === "claimed" && (
         <div className="fixed inset-0 z-50 flex flex-col items-center justify-center bg-black/95 animate-in fade-in duration-1000 p-8 text-center">
             <div className="text-6xl mb-6 animate-bounce">🚚</div>
             <h1 className={`text-3xl md:text-5xl text-[#fbbf24] mb-4 leading-tight ${titan.className}`}>
                 Wait for your chocolate...
             </h1>
             <p className={`text-xl text-white/80 ${playfair.className}`}>
-                It's reaching you very soon! ❤️
+                It&apos;s reaching you very soon! ❤️
             </p>
             <div className="mt-8 w-16 h-1 bg-gray-800 rounded-full overflow-hidden">
                 <div className="h-full bg-[#fbbf24] animate-[width_2s_ease-in-out_infinite]" style={{width: '50%'}} />
@@ -193,10 +328,10 @@ export default function ChocolatePage() {
       )}
 
       {/* ================= MESSAGE ICON ================= */}
-      {!showFinalMessage && (
+      {gameStage === "scratch" && (
         <button 
             onClick={() => setShowMessageModal(true)}
-            className="absolute top-6 right-6 z-50 w-12 h-12 bg-white/10 backdrop-blur-md rounded-full flex items-center justify-center border border-white/20 hover:scale-110 transition-transform active:scale-95 shadow-lg"
+            className="absolute top-6 right-6 z-50 w-12 h-12 bg-white/10 backdrop-blur-md rounded-full flex items-center justify-center border border-white/20 hover:scale-110 transition-transform active:scale-95 shadow-lg animate-in fade-in duration-1000"
         >
             <span className="text-2xl">📩</span>
         </button>
@@ -237,16 +372,23 @@ export default function ChocolatePage() {
         </div>
       )}
 
-      {/* ================= THE GAME AREA ================= */}
-      {!showFinalMessage && (
-        <>
-            {/* LAYER 1: THE GOLDEN TICKET */}
-            <div className="absolute z-10 w-[90%] max-w-sm aspect-[3/4] bg-gradient-to-b from-[#fcd34d] to-[#fbbf24] rounded-xl p-2 shadow-2xl flex flex-col">
+      {/* ================= STAGE 2: THE SCRATCH CARD ================= */}
+      {gameStage === "scratch" && (
+        <div className="scratch-card-container relative z-20 w-[90%] max-w-sm aspect-[3/4] flex items-center justify-center">
+            
+            {/* LAYER 1: THE GOLDEN TICKET (Underneath) */}
+            {/* FIX: 'isWrapperReady' ensures content is invisible until wrapper is drawn */}
+            {/* FIX: 'pointer-events-none' ensures button isn't clickable until revealed */}
+            <div 
+                className={`absolute inset-0 bg-gradient-to-b from-[#fcd34d] to-[#fbbf24] rounded-xl p-2 shadow-2xl flex flex-col 
+                            transition-opacity duration-500 ${isWrapperReady ? 'opacity-100' : 'opacity-0'} 
+                            ${!isRevealed ? 'pointer-events-none' : ''}`}
+            >
                 <div className="border-4 border-dashed border-black/10 h-full rounded-lg p-6 flex flex-col items-center text-center bg-white/10 overflow-hidden">
                     
-                    {/* Header Section (With Easter Egg) */}
-                    <div className="flex-shrink-0 mb-2 select-none">
-                        {/* THE CLICKABLE EMOJI */}
+                    {/* Header Section */}
+                    {/* FIX: pointer-events-auto added so she can click the Easter Egg after revealing */}
+                    <div className="flex-shrink-0 mb-2 select-none pointer-events-auto"> 
                         <div 
                             onClick={handleEasterEgg}
                             className="text-5xl mb-1 cursor-pointer hover:scale-110 active:scale-95 transition-transform"
@@ -260,7 +402,7 @@ export default function ChocolatePage() {
                     </div>
 
                     {/* Scrollable Content Section */}
-                    <div className="bg-white/60 p-3 rounded-lg w-full flex-1 overflow-y-auto min-h-0 my-2 shadow-inner relative">
+                    <div className="bg-white/60 p-3 rounded-lg w-full flex-1 overflow-y-auto min-h-0 my-2 shadow-inner relative custom-scrollbar pointer-events-auto">
                         <p className="text-sm font-bold text-[#3e005f] mb-2 text-left sticky top-0 bg-white/0 backdrop-blur-sm">Includes:</p>
                         <ul className="text-left text-[10px] md:text-xs space-y-2 text-black/80 font-medium leading-relaxed pb-6">
                             <li>✅ Unlimited Silk Oreos (But haa Khaio kam hi Sensitive Teeth hai aapke..or brush kr rhi haina raat ko.....Aaj chocolate Khake kr lena okay!!)</li>
@@ -274,7 +416,6 @@ export default function ChocolatePage() {
                             <li>✅ And Obv Me...Mai to hu hi(Mai bhi theek thaak sweet hu yrr)</li>
                         </ul>
                         
-                        {/* SCROLL HINT */}
                         <div className="sticky bottom-0 w-full text-center bg-gradient-to-t from-white/90 via-white/50 to-transparent pt-6 pb-1 -mx-3 px-3 translate-y-2 pointer-events-none">
                             <p className="text-[9px] text-[#3e005f]/60 font-bold animate-bounce tracking-widest">
                                 ▼ SCROLL FOR MORE ▼
@@ -283,20 +424,21 @@ export default function ChocolatePage() {
                     </div>
 
                     {/* Button Section */}
-                    <div className="flex-shrink-0 w-full mt-2">
+                    {/* FIX: Removed z-50, added pointer-events-auto */}
+                    <div className="flex-shrink-0 w-full mt-2 pointer-events-auto">
                        <button 
-    onClick={handleClaim}
-    className="w-full py-4 bg-[#3e005f] text-white font-bold rounded-full shadow-lg hover:scale-105 transition-transform active:scale-95 relative z-50 touch-manipulation"
->
-    CLAIM NOW
-</button>
+                            onClick={handleClaim}
+                            className="w-full py-4 bg-[#3e005f] text-white font-bold rounded-full shadow-lg hover:scale-105 transition-transform active:scale-95 relative z-10 touch-manipulation"
+                        >
+                            CLAIM NOW
+                        </button>
                     </div>
                 </div>
             </div>
 
             {/* LAYER 2: THE WRAPPER (Canvas) */}
             <div 
-                className="relative z-20 w-[90%] max-w-sm aspect-[3/4] rounded-xl overflow-hidden shadow-2xl transition-all duration-500"
+                className="absolute inset-0 rounded-xl overflow-hidden shadow-2xl transition-all duration-500 z-30"
                 style={{ pointerEvents: isRevealed ? 'none' : 'auto' }}
             >
                 <canvas
@@ -306,7 +448,7 @@ export default function ChocolatePage() {
                     onTouchMove={handleScratch}
                 />
             </div>
-        </>
+        </div>
       )}
 
     </main>
