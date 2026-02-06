@@ -4,7 +4,7 @@ import { useState, useEffect, useRef, useCallback } from "react";
 import { useRouter } from "next/navigation";
 import gsap from "gsap";
 import { Playfair_Display, Lato, Share_Tech_Mono, Titan_One } from "next/font/google";
-import { X } from "lucide-react"; 
+import { X, Lock, Unlock } from "lucide-react"; 
 
 // --- Fonts ---
 const playfair = Playfair_Display({ subsets: ["latin"], weight: ["400", "700"] });
@@ -12,22 +12,37 @@ const lato = Lato({ subsets: ["latin"], weight: ["300", "400", "700"] });
 const techMono = Share_Tech_Mono({ subsets: ["latin"], weight: ["400"] });
 const titan = Titan_One({ subsets: ["latin"], weight: ["400"] }); 
 
+const SECRET_CODE = "11/12/2025/21/56";
+
 export default function ChocolatePage() {
   const router = useRouter();
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const containerRef = useRef<HTMLDivElement>(null);
   const meterRef = useRef<HTMLInputElement>(null);
+  const audioRef = useRef<HTMLAudioElement>(null); // REF FOR AUDIO
   
   // --- STATES ---
   const [gameStage, setGameStage] = useState<"meter" | "incoming" | "scratch" | "claimed">("meter"); 
   const [meterValue, setMeterValue] = useState(0); 
   const [isRevealed, setIsRevealed] = useState(false);
-  
-  // FIX: New state to prevent "flash" of content before wrapper draws
   const [isWrapperReady, setIsWrapperReady] = useState(false);
 
+  // Message & Auth States
+  const [showAuthModal, setShowAuthModal] = useState(false);
   const [showMessageModal, setShowMessageModal] = useState(false);
+  const [inputCode, setInputCode] = useState("");
+  const [isError, setIsError] = useState(false);
+  
   const [showToast, setShowToast] = useState(false);
+
+  // --- AUDIO LOGIC ---
+  useEffect(() => {
+      // Start music when "Incoming" stage hits (User has interacted with slider)
+      if (gameStage === "incoming" && audioRef.current) {
+          audioRef.current.volume = 0.20; // Subtle Volume (20%)
+          audioRef.current.play().catch((e) => console.log("Audio play blocked", e));
+      }
+  }, [gameStage]);
 
   // --- Helper: Create Crumbs ---
   const createCrumb = useCallback((forceExplosion = false) => {
@@ -95,11 +110,10 @@ export default function ChocolatePage() {
     return () => ctx.revert();
   }, [createCrumb]);
 
-  // --- 2. Initialize Canvas (Only when stage is 'scratch') ---
+  // --- 2. Initialize Canvas ---
   useEffect(() => {
     if (gameStage !== "scratch") return;
 
-    // Reduced timeout to 0 for instant execution, but kept for execution stack order
     const timer = setTimeout(() => {
         const canvas = canvasRef.current;
         if (!canvas) return;
@@ -148,8 +162,6 @@ export default function ChocolatePage() {
 
         drawWrapper();
         ctx.globalCompositeOperation = "destination-out";
-        
-        // FIX: Only reveal the content BEHIND the wrapper once the wrapper is drawn
         setIsWrapperReady(true);
 
         gsap.fromTo(".scratch-card-container", 
@@ -176,7 +188,7 @@ export default function ChocolatePage() {
       if (gameStage === "incoming") {
           const timer = setTimeout(() => {
               triggerExplosion();
-          }, 4500);
+          }, 3000);
           return () => clearTimeout(timer);
       }
   // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -198,7 +210,7 @@ export default function ChocolatePage() {
             onComplete: () => {
                 setTimeout(() => {
                     setGameStage("incoming");
-                }, 3000);
+                }, 1500);
             }
         });
     }
@@ -232,7 +244,22 @@ export default function ChocolatePage() {
     }
   };
 
-  // --- 6. Claim Logic ---
+  // --- 6. Auth Handler ---
+  const handleAuthSubmit = (e: React.FormEvent) => {
+      e.preventDefault();
+      if (inputCode === SECRET_CODE) {
+          setShowAuthModal(false);
+          setShowMessageModal(true);
+          setInputCode("");
+      } else {
+          setIsError(true);
+          setTimeout(() => {
+              setIsError(false);
+              setInputCode("");
+          }, 500);
+      }
+  };
+
   const handleClaim = () => {
     setGameStage("claimed");
     setTimeout(() => {
@@ -240,7 +267,6 @@ export default function ChocolatePage() {
     }, 6000);
   };
 
-  // --- 7. Easter Egg Handler ---
   const handleEasterEgg = () => {
     setShowToast(true);
     setTimeout(() => {
@@ -253,7 +279,10 @@ export default function ChocolatePage() {
       ref={containerRef}
       className={`relative w-full h-screen overflow-hidden bg-[#1a0b2e] text-white flex flex-col items-center justify-center ${lato.className}`}
     >
-      
+      {/* BACKGROUND AUDIO PLAYER (Hidden) */}
+      {/* Make sure bg5.mp3 is in the public folder */}
+      <audio ref={audioRef} loop src="/bg5.mp3" preload="auto" />
+
       {showToast && (
         <div className="fixed top-20 z-[100] animate-in fade-in slide-in-from-top-5 duration-300">
             <div className="bg-[#fffbf0] text-[#3e005f] px-6 py-3 rounded-full shadow-[0_0_20px_rgba(251,191,36,0.6)] border-2 border-[#fbbf24] flex items-center gap-2">
@@ -264,13 +293,13 @@ export default function ChocolatePage() {
         </div>
       )}
 
-      {/* ================= STAGE 1: THE SWEETNESS METER ================= */}
+      {/* ================= STAGE 1: METER ================= */}
       {gameStage === "meter" && (
           <div className="z-20 flex flex-col items-center text-center p-6 animate-in zoom-in duration-700 w-full max-w-md">
               <h2 className={`text-4xl md:text-5xl text-[#fbbf24] mb-8 ${titan.className} drop-shadow-lg`}>
-                  Sweetness Check! 
+                  Sweetness Check! 🌡️
               </h2>
-              <p className="text-white/80 mb-12 text-lg">How sweet is my Tanya today?</p>
+              <p className="text-white/80 mb-12 text-lg">How sweet is Tanya today?</p>
               
               <div className="relative w-full h-16 bg-white/10 rounded-full border-4 border-white/20 p-2 shadow-[0_0_30px_rgba(251,191,36,0.3)]">
                   <div className="absolute top-2 bottom-2 left-2 rounded-full bg-gradient-to-r from-rose-500 via-[#fbbf24] to-white transition-all duration-100" 
@@ -293,7 +322,7 @@ export default function ChocolatePage() {
 
               <div className="mt-8 h-8">
                   {meterValue > 90 ? (
-                      <p className="text-red-400 font-bold tracking-widest animate-pulse text-xl">Come On You are 100% Sweet Everyday</p>
+                      <p className="text-red-400 font-bold tracking-widest animate-pulse text-xl">⚠️ SUGAR OVERLOAD DETECTED! ⚠️</p>
                   ) : (
                       <p className="text-white/50 text-sm">Drag right to measure...</p>
                   )}
@@ -301,7 +330,7 @@ export default function ChocolatePage() {
           </div>
       )}
 
-      {/* ================= STAGE 1.5: CHOCOLATE INCOMING ================= */}
+      {/* ================= STAGE 1.5: INCOMING ================= */}
       {gameStage === "incoming" && (
         <div className="fixed inset-0 z-50 flex flex-col items-center justify-center bg-black animate-in fade-in duration-1000">
             <h1 className={`text-4xl md:text-6xl text-[#a855f7] mb-4 text-center px-4 leading-tight animate-pulse ${titan.className}`}>
@@ -311,7 +340,7 @@ export default function ChocolatePage() {
         </div>
       )}
 
-      {/* ================= STAGE 3: FINAL MESSAGE SCREEN ================= */}
+      {/* ================= STAGE 3: CLAIMED ================= */}
       {gameStage === "claimed" && (
         <div className="fixed inset-0 z-50 flex flex-col items-center justify-center bg-black/95 animate-in fade-in duration-1000 p-8 text-center">
             <div className="text-6xl mb-6 animate-bounce">🚚</div>
@@ -319,7 +348,7 @@ export default function ChocolatePage() {
                 Wait for your chocolate...
             </h1>
             <p className={`text-xl text-white/80 ${playfair.className}`}>
-                It&apos;s reaching you very soon! ❤️
+                It's reaching you very soon! ❤️
             </p>
             <div className="mt-8 w-16 h-1 bg-gray-800 rounded-full overflow-hidden">
                 <div className="h-full bg-[#fbbf24] animate-[width_2s_ease-in-out_infinite]" style={{width: '50%'}} />
@@ -330,14 +359,50 @@ export default function ChocolatePage() {
       {/* ================= MESSAGE ICON ================= */}
       {gameStage === "scratch" && (
         <button 
-            onClick={() => setShowMessageModal(true)}
+            onClick={() => setShowAuthModal(true)}
             className="absolute top-6 right-6 z-50 w-12 h-12 bg-white/10 backdrop-blur-md rounded-full flex items-center justify-center border border-white/20 hover:scale-110 transition-transform active:scale-95 shadow-lg animate-in fade-in duration-1000"
         >
             <span className="text-2xl">📩</span>
         </button>
       )}
 
-      {/* ================= MESSAGE MODAL ================= */}
+      {/* ================= AUTH MODAL (PASSCODE) ================= */}
+      {showAuthModal && (
+          <div className="fixed inset-0 z-[70] flex items-center justify-center bg-black/90 backdrop-blur-md p-6 animate-in fade-in duration-300" onClick={() => setShowAuthModal(false)}>
+              <div className="w-full max-w-xs bg-[#1a0b2e] border border-[#3e005f] p-8 rounded-2xl text-center shadow-2xl relative" onClick={(e) => e.stopPropagation()}>
+                  <button onClick={() => setShowAuthModal(false)} className="absolute top-4 right-4 text-white/50 hover:text-white"><X size={20}/></button>
+                  
+                  <div className="mb-6 flex justify-center">
+                      <div className="w-12 h-12 rounded-full bg-[#3e005f] flex items-center justify-center">
+                          <Lock size={20} className="text-[#fbbf24]" />
+                      </div>
+                  </div>
+
+                  <h3 className={`text-lg text-white mb-2 ${titan.className}`}>Locked Message</h3>
+                  <p className="text-white/60 text-xs mb-6 font-mono">"When You Said ILY For The First Time.."</p>
+
+                  <form onSubmit={handleAuthSubmit} className={`space-y-4 ${isError ? 'animate-shake' : ''}`}>
+                      <input 
+                          type="text" 
+                          placeholder="DD/MM/YYYY/HH/MM"
+                          value={inputCode}
+                          onChange={(e) => setInputCode(e.target.value)}
+                          className="w-full bg-black/30 border border-white/10 rounded-lg py-3 px-4 text-center text-white placeholder-white/20 outline-none focus:border-[#fbbf24] transition-all font-mono tracking-widest text-sm"
+                          autoFocus
+                      />
+                      <button 
+                          type="submit"
+                          className="w-full py-3 bg-[#3e005f] hover:bg-[#50007b] text-white rounded-lg font-bold text-sm tracking-widest transition-colors flex items-center justify-center gap-2"
+                      >
+                          <Unlock size={14} />
+                          UNLOCK
+                      </button>
+                  </form>
+              </div>
+          </div>
+      )}
+
+      {/* ================= MESSAGE MODAL (CONTENT) ================= */}
       {showMessageModal && (
         <div className="fixed inset-0 z-[60] flex items-center justify-center bg-black/80 backdrop-blur-sm p-6 animate-in fade-in duration-300" onClick={() => setShowMessageModal(false)}>
             <div className="bg-[#fffbf0] text-black w-full max-w-sm p-8 rounded-2xl shadow-2xl relative overflow-y-auto max-h-[85vh]" onClick={(e) => e.stopPropagation()}>
@@ -377,17 +442,10 @@ export default function ChocolatePage() {
         <div className="scratch-card-container relative z-20 w-[90%] max-w-sm aspect-[3/4] flex items-center justify-center">
             
             {/* LAYER 1: THE GOLDEN TICKET (Underneath) */}
-            {/* FIX: 'isWrapperReady' ensures content is invisible until wrapper is drawn */}
-            {/* FIX: 'pointer-events-none' ensures button isn't clickable until revealed */}
-            <div 
-                className={`absolute inset-0 bg-gradient-to-b from-[#fcd34d] to-[#fbbf24] rounded-xl p-2 shadow-2xl flex flex-col 
-                            transition-opacity duration-500 ${isWrapperReady ? 'opacity-100' : 'opacity-0'} 
-                            ${!isRevealed ? 'pointer-events-none' : ''}`}
-            >
+            <div className={`absolute inset-0 bg-gradient-to-b from-[#fcd34d] to-[#fbbf24] rounded-xl p-2 shadow-2xl flex flex-col transition-opacity duration-500 ${isWrapperReady ? 'opacity-100' : 'opacity-0'} ${!isRevealed ? 'pointer-events-none' : ''}`}>
                 <div className="border-4 border-dashed border-black/10 h-full rounded-lg p-6 flex flex-col items-center text-center bg-white/10 overflow-hidden">
                     
                     {/* Header Section */}
-                    {/* FIX: pointer-events-auto added so she can click the Easter Egg after revealing */}
                     <div className="flex-shrink-0 mb-2 select-none pointer-events-auto"> 
                         <div 
                             onClick={handleEasterEgg}
@@ -424,7 +482,6 @@ export default function ChocolatePage() {
                     </div>
 
                     {/* Button Section */}
-                    {/* FIX: Removed z-50, added pointer-events-auto */}
                     <div className="flex-shrink-0 w-full mt-2 pointer-events-auto">
                        <button 
                             onClick={handleClaim}

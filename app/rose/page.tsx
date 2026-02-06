@@ -5,7 +5,7 @@ import { useRouter } from "next/navigation";
 import Image from "next/image";
 import gsap from "gsap";
 import { Playfair_Display, Lato, Dancing_Script } from "next/font/google";
-import { Heart } from "lucide-react"; // Import Heart Icon
+import { Heart, Music, Bird } from "lucide-react"; 
 
 // --- Fonts ---
 const playfair = Playfair_Display({ subsets: ["latin"], weight: ["400", "700"] });
@@ -30,16 +30,88 @@ const MEMORIES = [
 export default function RosePage() {
   const router = useRouter();
   const containerRef = useRef<HTMLDivElement>(null);
+  const audioRef = useRef<HTMLAudioElement>(null); 
   
-  // --- States ---
-  const [stage, setStage] = useState<"intro" | "selection" | "interim" | "gallery" | "pre_finale" | "finale">("intro");
+  // --- STATES ---
+  const [stage, setStage] = useState<"gate" | "intro" | "selection" | "interim" | "gallery" | "pre_finale" | "finale">("gate");
   const [clickedRoses, setClickedRoses] = useState<string[]>([]);
   const [activeRose, setActiveRose] = useState<typeof ROSES_DATA[0] | null>(null);
   const [photoIndex, setPhotoIndex] = useState(0);
   const [isTrans, setIsTrans] = useState(false);
   const [imageLoaded, setImageLoaded] = useState(false);
 
+  // --- AUDIO LOGIC ---
+  const enterGarden = () => {
+      // User Interaction = Browser allows audio
+      if (audioRef.current) {
+          audioRef.current.volume = 0.3; 
+          audioRef.current.play().then(() => {
+              setStage("intro");
+          }).catch(e => {
+              console.error("Audio failed:", e);
+              setStage("intro"); 
+          });
+      } else {
+          setStage("intro");
+      }
+  };
+
+  useEffect(() => {
+    const audio = audioRef.current;
+    if (!audio) return;
+
+    if (stage === "selection") {
+        gsap.to(audio, { volume: 0.02, duration: 2, ease: "power2.out" });
+    } 
+    else if (stage === "gallery") {
+        gsap.to(audio, { volume: 0.1, duration: 2, ease: "power2.in" });
+    }
+  }, [stage]);
+
   // --- ANIMATIONS ---
+  // 1. GATE ANIMATION (Fireflies & Birds)
+  useEffect(() => {
+      if (stage === "gate") {
+          const ctx = gsap.context(() => {
+              
+              // A. Fireflies
+              for (let i = 0; i < 20; i++) {
+                  const fly = document.createElement("div");
+                  fly.className = "firefly absolute w-1 h-1 bg-rose-400 rounded-full blur-[1px] opacity-0 pointer-events-none";
+                  fly.style.left = `${Math.random() * 100}%`;
+                  fly.style.top = `${Math.random() * 100}%`;
+                  containerRef.current?.appendChild(fly);
+
+                  gsap.to(fly, {
+                      opacity: `random(0.3, 0.8)`,
+                      scale: `random(0.5, 1.5)`,
+                      x: `random(-50, 50)`,
+                      y: `random(-50, 50)`,
+                      duration: `random(3, 6)`,
+                      repeat: -1,
+                      yoyo: true,
+                      ease: "sine.inOut"
+                  });
+              }
+
+              // B. Birds (Simulated using small blurry shapes or SVGs if available, using simple divs here for motion)
+              // We will render actual SVG birds in the JSX return, here we animate them
+              gsap.to(".bird-glider", {
+                  x: "120vw", // Fly across screen
+                  y: "random(-50, 50)",
+                  duration: "random(15, 25)",
+                  repeat: -1,
+                  ease: "linear",
+                  stagger: 5,
+                  opacity: 0.4
+              });
+
+          }, containerRef);
+          return () => ctx.revert();
+      }
+  }, [stage]);
+
+  // 2. INTRO ANIMATION
   useEffect(() => {
     if (stage !== "intro") return;
     const ctx = gsap.context(() => {
@@ -67,23 +139,16 @@ export default function RosePage() {
 
   const startGallery = () => gsap.to(".interim-container", { opacity: 0, y: -50, duration: 0.8, onComplete: () => setStage("gallery") });
 
-  // --- 1. TRANSITION START: Fade Out Old Content ---
   const giveRoseToPhoto = () => {
     if (isTrans) return;
     setIsTrans(true);
-    
     const ctx = gsap.context(() => {
-      // Fade out both container and text
       gsap.to([".photo-card-container", ".text-container"], { 
-        opacity: 0, 
-        y: -30, 
-        duration: 0.5, 
-        ease: "power2.in",
+        opacity: 0, y: -30, duration: 0.5, ease: "power2.in",
         onComplete: () => {
-             // After fade out is complete, switch data
              if (photoIndex < MEMORIES.length - 1) {
                 setPhotoIndex(prev => prev + 1);
-                setImageLoaded(false); // Reset loading state -> Shows Heart
+                setImageLoaded(false); 
             } else {
                 setStage("pre_finale");
             }
@@ -92,18 +157,13 @@ export default function RosePage() {
     }, containerRef);
   };
 
-  // --- 2. TRANSITION END: Fade In New Content (When Image Loads) ---
   useEffect(() => {
-    // Only run this if we are in gallery mode, transition is active, and image just finished loading
     if (stage === "gallery" && imageLoaded && isTrans) {
         const ctx = gsap.context(() => {
-            gsap.set([".photo-card-container", ".text-container"], { y: 30 }); // Prepare for slide up
+            gsap.set([".photo-card-container", ".text-container"], { y: 30 }); 
             gsap.to([".photo-card-container", ".text-container"], { 
-                opacity: 1, 
-                y: 0, 
-                duration: 0.8, 
-                ease: "power2.out",
-                onComplete: () => setIsTrans(false) // Re-enable button
+                opacity: 1, y: 0, duration: 0.8, ease: "power2.out",
+                onComplete: () => setIsTrans(false) 
             });
         }, containerRef);
         return () => ctx.revert();
@@ -120,15 +180,67 @@ export default function RosePage() {
     }
   }, [stage]);
 
-  const handleImageError = () => setImageLoaded(true); // Fail-safe
+  const handleImageError = () => setImageLoaded(true); 
 
   return (
     <main ref={containerRef} className={`relative w-full min-h-screen bg-black text-white overflow-x-hidden overflow-y-auto flex flex-col items-center justify-center ${lato.className}`}>
       
-      {/* Background Gradient */}
-      <div className="fixed inset-0 bg-[radial-gradient(circle_at_center,_#3f0a12_0%,_#000000_100%)] opacity-60 pointer-events-none z-0"></div>
+      {/* AUDIO PLAYER */}
+      <audio ref={audioRef} loop src="/bg4.mp3" preload="auto" />
 
-      {/* INTRO */}
+      {/* BACKGROUND GRADIENT (Dynamic for Gate) */}
+      <div className={`fixed inset-0 transition-all duration-1000 pointer-events-none z-0 ${stage === 'gate' ? 'bg-[radial-gradient(circle_at_center,_#500724_0%,_#090103_100%)]' : 'bg-[radial-gradient(circle_at_center,_#3f0a12_0%,_#000000_100%)] opacity-60'}`}></div>
+
+      {/* --- STAGE 0: THE ROMANTIC GATE --- */}
+      {stage === "gate" && (
+          <div className="absolute inset-0 z-50 flex flex-col items-center justify-center p-6 text-center animate-in fade-in zoom-in duration-1000 overflow-hidden">
+              
+              {/* Floating Birds (SVG Gliders) */}
+              {[...Array(3)].map((_, i) => (
+                  <div key={i} className="bird-glider absolute opacity-0 pointer-events-none text-rose-200/30" style={{ top: `${15 + i * 20}%`, left: '-10%', transform: `scale(${0.5 + Math.random()})` }}>
+                      <svg width="40" height="40" viewBox="0 0 24 24" fill="currentColor" xmlns="http://www.w3.org/2000/svg">
+                          <path d="M21 12C21 12 19 13 17 13C15 13 14 12 14 12C14 12 13 8 11 8C9 8 7 12 7 12C7 12 5 12 3 11C1 10 0 12 0 12C0 12 3 15 7 15C11 15 13 11 13 11C13 11 15 16 21 16C27 16 24 12 24 12C24 12 23 12 21 12Z" />
+                      </svg>
+                  </div>
+              ))}
+
+              {/* Floating Heart Decor */}
+              <div className="absolute top-1/4 left-1/4 text-rose-500/20 text-4xl animate-pulse">❤</div>
+              <div className="absolute bottom-1/4 right-1/4 text-rose-500/20 text-2xl animate-pulse delay-700">❤</div>
+
+              <div className="mb-2 flex items-center gap-2 text-rose-300/60 text-xs tracking-[0.3em] uppercase">
+                  <Music size={12} className="animate-spin-slow" />
+                  <span></span>
+              </div>
+
+              <h1 className={`text-5xl md:text-7xl text-transparent bg-clip-text bg-gradient-to-r from-rose-300 via-rose-500 to-rose-300 mb-6 drop-shadow-[0_0_15px_rgba(225,29,72,0.5)] ${playfair.className}`}>
+                  The Rose Garden
+              </h1>
+              
+              <p className={`text-xl md:text-2xl text-rose-100/80 mb-12 font-light ${handwriting.className}`}>
+                  "For my cutuuu....
+              </p>
+
+              <button 
+                onClick={enterGarden}
+                className="group relative px-10 py-4 bg-transparent overflow-hidden rounded-full transition-all hover:scale-105 active:scale-95"
+              >
+                  {/* Glowing Border */}
+                  <div className="absolute inset-0 border border-rose-500/50 rounded-full shadow-[0_0_20px_rgba(225,29,72,0.4)] group-hover:shadow-[0_0_40px_rgba(225,29,72,0.6)] transition-all duration-500 animate-pulse"></div>
+                  
+                  {/* Button Content */}
+                  <span className={`relative z-10 text-rose-200 uppercase tracking-widest text-xs font-bold flex items-center gap-3 ${lato.className}`}>
+                      Enter
+                      <Heart size={14} className="fill-rose-500 text-rose-500 animate-bounce" />
+                  </span>
+                  
+                  {/* Subtle Fill on Hover */}
+                  <div className="absolute inset-0 bg-rose-500/10 opacity-0 group-hover:opacity-100 transition-opacity duration-500"></div>
+              </button>
+          </div>
+      )}
+
+      {/* --- STAGE 1: INTRO SEQUENCE --- */}
       {stage === "intro" && (
         <div className="absolute inset-0 flex flex-col items-center justify-center text-center p-6 pointer-events-none z-50">
           <h1 className={`intro-text-1 absolute text-4xl md:text-6xl text-rose-500 opacity-0 translate-y-10 ${playfair.className}`}>Millions of roses in the world...</h1>
@@ -137,7 +249,7 @@ export default function RosePage() {
         </div>
       )}
 
-      {/* SELECTION */}
+      {/* --- STAGE 2: SELECTION --- */}
       {stage === "selection" && (
         <div className="w-full max-w-lg px-6 py-12 animate-in fade-in duration-1000 z-10 flex flex-col items-center justify-center min-h-screen">
             <h2 className={`text-3xl text-center mb-8 text-rose-100 ${playfair.className}`}>Collect Your Bouquet</h2>
@@ -164,7 +276,7 @@ export default function RosePage() {
         </div>
       )}
 
-      {/* INTERIM */}
+      {/* --- STAGE 3: INTERIM --- */}
       {stage === "interim" && (
         <div className="interim-container absolute inset-0 flex flex-col items-center justify-center text-center px-6 z-50">
             <div className="interim-text opacity-0">
@@ -175,7 +287,7 @@ export default function RosePage() {
         </div>
       )}
 
-      {/* GALLERY */}
+      {/* --- STAGE 4: GALLERY --- */}
       {stage === "gallery" && (
         <>
             {/* Background Blur Image (Opacity logic avoids flash) */}
@@ -241,14 +353,14 @@ export default function RosePage() {
         </>
       )}
 
-      {/* PRE-FINALE */}
+      {/* --- PRE-FINALE --- */}
       {stage === "pre_finale" && (
         <div className="absolute inset-0 flex items-center justify-center p-6 text-center z-50">
             <h1 className={`pre-finale-text text-3xl md:text-5xl text-rose-200 leading-tight opacity-0 ${playfair.className}`}>And not just that... <br/> I could add endless photos of yours...</h1>
         </div>
       )}
 
-      {/* FINALE */}
+      {/* --- FINALE --- */}
       {stage === "finale" && (
         <div className="text-center px-6 animate-in zoom-in duration-1000 z-10 min-h-screen flex flex-col items-center justify-center">
             <div className="text-6xl mb-6 animate-bounce">🚚</div>

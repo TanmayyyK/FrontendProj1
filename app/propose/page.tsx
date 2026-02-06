@@ -4,7 +4,7 @@ import { useState, useRef, useEffect } from "react";
 import { useRouter } from "next/navigation";
 import gsap from "gsap";
 import { Playfair_Display, Lato, Share_Tech_Mono } from "next/font/google";
-import { Heart, Frown, RefreshCcw } from "lucide-react";
+import { Heart, Frown, RefreshCcw, PartyPopper, BadgeCheck } from "lucide-react";
 
 // --- Fonts ---
 const playfair = Playfair_Display({ subsets: ["latin"], weight: ["400", "700"] });
@@ -66,6 +66,9 @@ export default function ProposePage() {
   useEffect(() => {
     if (status === "initial") {
         const ctx = gsap.context(() => {
+          // Restore Background if returning from sad
+          gsap.to(".main-bg", { filter: "grayscale(0%) brightness(1)", duration: 1 });
+
           gsap.fromTo(".header-text",
             { y: 50, opacity: 0 },
             { y: 0, opacity: 1, duration: 1, ease: "power3.out", stagger: 0.2 }
@@ -87,17 +90,15 @@ export default function ProposePage() {
         }, containerRef);
         return () => ctx.revert();
     }
-  }, []); 
+  }, [status]); 
 
-  // --- 2. Handle "No" Click (The Explosion & Scroll) ---
+  // --- 2. Handle "No" Click (Sad Background) ---
   const handleNoClick = () => {
-    // 1. Scroll Up Immediately so she sees the explosion
     window.scrollTo({ top: 0, behavior: 'smooth' });
-
     setStatus("sad");
     
     const ctx = gsap.context(() => {
-        // 2. Explode Perks
+        // Explode Perks
         gsap.to(".perk-card", {
             x: () => (Math.random() - 0.5) * window.innerWidth * 1.2, 
             y: () => (Math.random() - 0.5) * window.innerHeight * 1.2, 
@@ -106,67 +107,67 @@ export default function ProposePage() {
             scale: 0,
             duration: 1.5,
             ease: "power3.inOut",
-            stagger: 0.02 // Fast stagger for chaos
+            stagger: 0.02
         });
 
-        // 3. Dim Background heavily
-        gsap.to(".main-bg", { filter: "grayscale(100%) brightness(0.2)", duration: 1 });
+        // TURN BACKGROUND SAD (Grayscale + Dark)
+        gsap.to(".main-bg", { filter: "grayscale(100%) brightness(0.2)", duration: 1.5 });
         
-        // 4. Shake the screen
-        gsap.fromTo(containerRef.current, 
-            { x: -10 }, 
-            { x: 10, duration: 0.1, repeat: 5, yoyo: true, ease: "none", clearProps: "x" }
-        );
+        // Shake screen
+        gsap.fromTo(containerRef.current, { x: -10 }, { x: 10, duration: 0.1, repeat: 5, yoyo: true, clearProps: "x" });
     }, containerRef);
   };
 
-  // --- 3. Handle "Reconsider" Click (The Restoration) ---
+  // --- 3. Handle "Reconsider" Click ---
   const handleReconsider = () => {
     setStatus("initial");
     const ctx = gsap.context(() => {
-        // 1. Bring Perks Back
-        gsap.to(".perk-card", {
-            x: 0,
-            y: 0,
-            rotation: 0,
-            opacity: 1,
-            scale: 1,
-            duration: 1,
-            ease: "elastic.out(1, 0.6)",
-            stagger: 0.05
-        });
-
-        // 2. Restore Background
-        gsap.to(".main-bg", { filter: "grayscale(0%) brightness(1)", duration: 1 });
+        // Elements return in useEffect [status] dependency
     }, containerRef);
   };
 
-  // --- 4. Handle "Yes" Click (Success) ---
+  // --- 4. Handle "Yes" Click (FUN CELEBRATION) ---
   const handleAccept = () => {
     setStatus("accepted");
     const ctx = gsap.context(() => {
-      for (let i = 0; i < 80; i++) {
+      
+      // 1. Change Background to Happy
+      gsap.to(".main-bg", { 
+          background: "linear-gradient(to bottom, #4a0404, #000000)", 
+          filter: "brightness(1.2)",
+          duration: 1 
+      });
+
+      // 2. Confetti Explosion
+      for (let i = 0; i < 100; i++) {
         const heart = document.createElement("div");
-        heart.innerHTML = ["❤️", "💍", "🌹", "✨"][Math.floor(Math.random() * 4)];
+        heart.innerHTML = ["❤️", "💍", "✨", "🎉", "😍"][Math.floor(Math.random() * 5)];
+        heart.className = "celebration-particle";
         heart.style.position = "fixed";
         heart.style.left = "50%";
         heart.style.top = "50%";
-        heart.style.fontSize = `${Math.random() * 40 + 10}px`;
-        heart.style.pointerEvents = "none";
+        heart.style.fontSize = `${Math.random() * 40 + 20}px`;
         heart.style.zIndex = "100";
+        heart.style.pointerEvents = "none";
         document.body.appendChild(heart);
         
         gsap.to(heart, {
-          x: `random(-500, 500)`,
-          y: `random(-500, 500)`,
-          rotation: `random(0, 720)`,
-          opacity: 0,
-          scale: `random(0.5, 1.5)`,
-          duration: `random(1.5, 3)`,
-          ease: "power3.out",
+          x: `random(-600, 600)`,
+          y: `random(-600, 600)`,
+          rotation: `random(0, 1440)`,
+          scale: `random(0.5, 2)`,
+          duration: `random(2, 4)`,
+          ease: "power4.out",
           onComplete: () => heart.remove()
         });
       }
+
+      // 3. Stamp Animation
+      gsap.fromTo(".contract-stamp", 
+        { scale: 5, opacity: 0, rotate: -45 }, 
+        { scale: 1, opacity: 1, rotate: -12, duration: 0.6, ease: "bounce.out", delay: 0.5 }
+      );
+
     }, containerRef);
   };
 
@@ -177,7 +178,7 @@ export default function ProposePage() {
     >
       {/* Background Texture & Color Wrapper */}
       <div className="main-bg fixed inset-0 transition-all duration-1000 z-0">
-          <div className="absolute inset-0 bg-[#050202]" />
+          <div className="absolute inset-0 bg-[#050202] transition-colors duration-1000" />
           <div className="absolute inset-0 opacity-20 bg-[url('https://grainy-gradients.vercel.app/noise.svg')] pointer-events-none" />
       </div>
       
@@ -227,8 +228,7 @@ export default function ProposePage() {
           </div>
 
 
-          {/* --- PROPOSAL SECTION (Standard Buttons) --- */}
-          {/* Hidden when sad to avoid clutter */}
+          {/* --- PROPOSAL SECTION --- */}
           <div className={`flex flex-col items-center justify-center w-full max-w-xl text-center mb-20 relative transition-opacity duration-500 ${status === 'sad' ? 'opacity-0 pointer-events-none' : 'opacity-100'}`}>
              <div className="w-1 h-20 bg-gradient-to-b from-transparent to-rose-500 mb-8" />
              
@@ -280,23 +280,56 @@ export default function ProposePage() {
 
         </div>
       ) : (
-        /* --- SUCCESS STATE --- */
-        <div className="fixed inset-0 z-50 flex flex-col items-center justify-center bg-black/90 backdrop-blur-xl animate-in fade-in duration-1000">
-          <div className="text-8xl mb-6 animate-bounce">💍</div>
-          <h2 className={`text-5xl md:text-7xl text-center mb-6 text-white ${playfair.className}`}>
-            My Crush said YES!
-          </h2>
-          <div className="bg-white/10 rounded-full px-6 py-2 border border-white/20 mb-8">
-             <p className={`text-rose-300 text-sm tracking-[0.2em] uppercase ${techMono.className}`}>
-              Permanent Booking Hogai Samjhoo..
-             </p>
+        /* --- SUCCESS STATE (THE FUN PART) --- */
+        <div className="fixed inset-0 z-50 flex flex-col items-center justify-center overflow-hidden">
+          
+          {/* 1. The Stamp Card */}
+          <div className="contract-stamp relative bg-[#fffbf0] text-black p-8 md:p-12 rounded-lg shadow-2xl max-w-md transform -rotate-12 border-8 border-double border-rose-500">
+              
+              {/* Corner Tape */}
+              <div className="absolute -top-6 left-1/2 -translate-x-1/2 w-32 h-12 bg-white/20 backdrop-blur-sm transform rotate-2 border border-white/40 shadow-sm"></div>
+
+              <div className="flex justify-center mb-4">
+                  <PartyPopper size={50} className="text-rose-600 animate-bounce" />
+              </div>
+
+              <h2 className={`text-4xl md:text-6xl text-center font-black uppercase text-rose-600 leading-none mb-2 ${playfair.className}`}>
+                  MY CRUSH SAID YES!
+              </h2>
+              
+              <div className="w-full h-1 bg-black/10 my-4 rounded-full"></div>
+
+              <div className="text-center space-y-2">
+                  <p className={`font-bold tracking-widest text-sm uppercase ${techMono.className}`}>Official Contract</p>
+                  <p className="text-xl font-handwriting">Signed by Tanya ❤️</p>
+              </div>
+
+              {/* The Stamp Graphic */}
+              <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 border-4 border-rose-500 rounded-full w-48 h-48 flex items-center justify-center opacity-20 animate-spin-slow pointer-events-none">
+                  <span className="text-xs tracking-[0.3em] font-bold text-rose-500 uppercase">Official • Official • Official</span>
+              </div>
+
+              {/* Stamp Mark */}
+              <div className="absolute bottom-4 right-4 transform rotate-12">
+                  <BadgeCheck size={60} className="text-green-600 fill-green-100" />
+              </div>
+          </div>
+
+          {/* 2. Cheeky Text Below */}
+          <div className="mt-12 text-center animate-in slide-in-from-bottom duration-1000 delay-500 z-50">
+              <p className="text-2xl md:text-3xl text-white font-bold mb-2">
+                  Permanent Booking Hogai Samjho😜
+              </p>
+              <p className="text-white/60 text-sm">
+                  (You are stuck with me forever hehe😉)
+              </p>
           </div>
           
           <button 
             onClick={() => router.push("/")}
-            className="mt-8 text-white/40 hover:text-white text-xs tracking-[0.2em] uppercase transition-colors flex items-center gap-2"
+            className="mt-8 px-8 py-3 bg-white/10 border border-white/20 rounded-full text-white hover:bg-white hover:text-rose-600 transition-all text-xs tracking-[0.2em] uppercase font-bold flex items-center gap-2 z-50"
           >
-            ← Back to Hub
+            Go to Hub
           </button>
         </div>
       )}
