@@ -398,7 +398,7 @@ function HubContent() {
                       <p className={`text-rose-500 text-xs uppercase tracking-[0.2em] font-bold ${techMono.className}`}>
                           {isError ? "Incorrect Code" : "When we came together"}
                       </p>
-                      <p className="text-[10px] text-white/40 mt-2 uppercase tracking-widest">DD/MM/YYYY/00/02</p>
+                      <p className="text-[10px] text-white/40 mt-2 uppercase tracking-widest">DD/MM/YYYY/HH/MM</p>
                   </div>
                   
                   <form onSubmit={handlePasscodeSubmit} className={`flex flex-col items-center w-full gap-4 ${isError ? 'animate-shake' : ''}`}>
