@@ -59,42 +59,62 @@ export default function ProposePage() {
   const router = useRouter();
   const containerRef = useRef<HTMLDivElement>(null);
   
-  // Status: 'initial' | 'sad' | 'accepted'
-  const [status, setStatus] = useState("initial");
+  // Status: 'intro' | 'main' | 'sad' | 'accepted'
+  const [status, setStatus] = useState<"intro" | "main" | "sad" | "accepted">("intro");
 
-  // --- 1. Animation on Load & Reconsider ---
+  // --- 1. INTRO SEQUENCE ---
   useEffect(() => {
-    if (status === "initial") {
+      const ctx = gsap.context(() => {
+          const tl = gsap.timeline();
+
+          // Ensure texts start invisible
+          gsap.set(".intro-text-1, .intro-text-2", { opacity: 0 });
+
+          // Step 1: "Hold My Hands Tanya..."
+          tl.to(".intro-text-1", { opacity: 1, duration: 1.5, ease: "power2.inOut" })
+            .to(".intro-text-1", { opacity: 0, duration: 1, delay: 1.5 })
+            
+            // Step 2: "I am nervous..."
+            .to(".intro-text-2", { opacity: 1, duration: 1.5, ease: "power2.inOut" })
+            .to(".intro-text-2", { opacity: 0, duration: 1, delay: 1.5 })
+            
+            // Step 3: Start Main Content
+            .call(() => setStatus("main"));
+
+      }, containerRef);
+      return () => ctx.revert();
+  }, []);
+
+  // --- 2. MAIN CONTENT ANIMATION (On Load & Reconsider) ---
+  useEffect(() => {
+    if (status === "main") {
         const ctx = gsap.context(() => {
-          // Restore Background if returning from sad
+          // Restore Background
           gsap.to(".main-bg", { filter: "grayscale(0%) brightness(1)", duration: 1 });
 
-          // Header Animation
-          gsap.fromTo(".header-text",
-            { y: 50, opacity: 0 },
+          // --- FIX: RESET CARDS ---
+          // This forces any "exploded" cards back to center before animating in
+          gsap.killTweensOf(".perk-card");
+          gsap.set(".perk-card", { clearProps: "all" }); // Remove transform/opacity styles
+          gsap.set(".perk-card", { y: 100, opacity: 0, scale: 0.9 }); // Set start state
+          
+          gsap.set(".header-text", { y: 50, opacity: 0 });
+
+          // Animate Header
+          gsap.to(".header-text",
             { y: 0, opacity: 1, duration: 1, ease: "power3.out", stagger: 0.2 }
           );
 
-          // Perks Animation (FIXED: Force Reset X and Rotation)
-          gsap.fromTo(".perk-card",
-            { 
-                y: 100, 
-                x: 0, // FIX: Explicitly reset X so they come back to center
-                rotation: 0, // FIX: Explicitly reset Rotation
-                opacity: 0, 
-                scale: 0.9 
-            },
+          // Animate Cards In
+          gsap.to(".perk-card",
             { 
               y: 0, 
-              x: 0,
-              rotation: 0,
               opacity: 1, 
               scale: 1, 
               duration: 0.8, 
               ease: "back.out(1.7)", 
               stagger: 0.1, 
-              delay: 0.2,
-              overwrite: "auto" // Ensures previous "explosion" animations are killed
+              delay: 0.5
             }
           );
         }, containerRef);
@@ -102,7 +122,7 @@ export default function ProposePage() {
     }
   }, [status]); 
 
-  // --- 2. Handle "No" Click (Sad Background) ---
+  // --- 3. Handle "No" Click (Explosion) ---
   const handleNoClick = () => {
     window.scrollTo({ top: 0, behavior: 'smooth' });
     setStatus("sad");
@@ -110,8 +130,8 @@ export default function ProposePage() {
     const ctx = gsap.context(() => {
         // Explode Perks
         gsap.to(".perk-card", {
-            x: () => (Math.random() - 0.5) * window.innerWidth * 1.5, 
-            y: () => (Math.random() - 0.5) * window.innerHeight * 1.5, 
+            x: () => (Math.random() - 0.5) * window.innerWidth * 1.2, 
+            y: () => (Math.random() - 0.5) * window.innerHeight * 1.2, 
             rotation: () => Math.random() * 720 - 360, 
             opacity: 0,
             scale: 0,
@@ -120,7 +140,7 @@ export default function ProposePage() {
             stagger: 0.02
         });
 
-        // TURN BACKGROUND SAD (Grayscale + Dark)
+        // Dim Background
         gsap.to(".main-bg", { filter: "grayscale(100%) brightness(0.2)", duration: 1.5 });
         
         // Shake screen
@@ -128,26 +148,25 @@ export default function ProposePage() {
     }, containerRef);
   };
 
-  // --- 3. Handle "Reconsider" Click ---
+  // --- 4. Handle "Reconsider" Click ---
   const handleReconsider = () => {
-    // Setting status to 'initial' triggers the useEffect above
-    // which handles the "Assembly" animation and resets properties.
-    setStatus("initial");
+    // Setting this to 'main' triggers the useEffect above which resets the cards
+    setStatus("main");
   };
 
-  // --- 4. Handle "Yes" Click (FUN CELEBRATION) ---
+  // --- 5. Handle "Yes" Click ---
   const handleAccept = () => {
     setStatus("accepted");
     const ctx = gsap.context(() => {
       
-      // 1. Change Background to Happy
+      // Happy Background
       gsap.to(".main-bg", { 
           background: "linear-gradient(to bottom, #4a0404, #000000)", 
           filter: "brightness(1.2)",
           duration: 1 
       });
 
-      // 2. Confetti Explosion
+      // Confetti
       for (let i = 0; i < 100; i++) {
         const heart = document.createElement("div");
         heart.innerHTML = ["❤️", "💍", "✨", "🎉", "😍"][Math.floor(Math.random() * 5)];
@@ -171,7 +190,7 @@ export default function ProposePage() {
         });
       }
 
-      // 3. Stamp Animation
+      // Stamp Animation
       gsap.fromTo(".contract-stamp", 
         { scale: 5, opacity: 0, rotate: -45 }, 
         { scale: 1, opacity: 1, rotate: -12, duration: 0.6, ease: "bounce.out", delay: 0.5 }
@@ -185,16 +204,29 @@ export default function ProposePage() {
       ref={containerRef}
       className={`relative w-full min-h-screen bg-[#050202] text-white overflow-x-hidden ${lato.className}`}
     >
-      {/* Background Texture & Color Wrapper */}
+      {/* Background Texture */}
       <div className="main-bg fixed inset-0 transition-all duration-1000 z-0">
           <div className="absolute inset-0 bg-[#050202] transition-colors duration-1000" />
           <div className="absolute inset-0 opacity-20 bg-[url('https://grainy-gradients.vercel.app/noise.svg')] pointer-events-none" />
       </div>
+
+      {/* --- INTRO SEQUENCE (Black Screen) --- */}
+      {status === "intro" && (
+          <div className="fixed inset-0 z-50 flex items-center justify-center bg-black text-center pointer-events-none">
+              <h1 className={`intro-text-1 absolute text-3xl md:text-5xl text-rose-500 opacity-0 font-light tracking-widest ${playfair.className}`}>
+                  Hold My Hands Tanya...
+              </h1>
+              <h1 className={`intro-text-2 absolute text-3xl md:text-5xl text-white opacity-0 font-light tracking-widest ${playfair.className}`}>
+                  I am nervous...
+              </h1>
+          </div>
+      )}
       
-      {status !== "accepted" ? (
-        <div className="relative z-10 flex flex-col items-center py-20 px-6">
+      {/* --- MAIN CONTENT --- */}
+      {(status === "main" || status === "sad") && (
+        <div className="relative z-10 flex flex-col items-center py-20 px-6 animate-in fade-in duration-1000">
           
-          {/* --- HEADER --- */}
+          {/* Header */}
           <div className="text-center mb-16 max-w-2xl transition-all duration-500">
             <p className={`header-text text-rose-500 text-xs font-bold tracking-[0.3em] uppercase mb-4 ${techMono.className}`}>
                {status === "sad" ? "HEART BROKEN" : "Candidate: Your Hunn Bunn!"}
@@ -207,7 +239,7 @@ export default function ProposePage() {
             </p>
           </div>
 
-          {/* --- GRID SYSTEM --- */}
+          {/* Grid System */}
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 mb-32 w-full max-w-6xl perspective-1000">
             {PERKS.map((perk, index) => (
                <div 
@@ -226,7 +258,7 @@ export default function ProposePage() {
                </div>
             ))}
             
-            {/* 9th Item: Lifetime Card */}
+            {/* 9th Item */}
             <div className="perk-card p-6 rounded-2xl bg-gradient-to-br from-rose-900/40 to-black border border-rose-500/40 flex flex-col items-center justify-center text-center shadow-[0_0_30px_rgba(225,29,72,0.2)] min-h-[180px]">
                 <span className="text-5xl mb-4 animate-pulse">∞</span>
                 <p className={`text-xl text-rose-200 font-bold ${playfair.className}`}>
@@ -237,7 +269,7 @@ export default function ProposePage() {
           </div>
 
 
-          {/* --- PROPOSAL SECTION --- */}
+          {/* Buttons */}
           <div className={`flex flex-col items-center justify-center w-full max-w-xl text-center mb-20 relative transition-opacity duration-500 ${status === 'sad' ? 'opacity-0 pointer-events-none' : 'opacity-100'}`}>
              <div className="w-1 h-20 bg-gradient-to-b from-transparent to-rose-500 mb-8" />
              
@@ -265,7 +297,7 @@ export default function ProposePage() {
              </div>
           </div>
 
-          {/* --- SAD MODE OVERLAY (Fixed Center) --- */}
+          {/* SAD OVERLAY */}
           {status === "sad" && (
              <div className="fixed inset-0 z-50 flex flex-col items-center justify-center animate-in zoom-in duration-500 px-6">
                  <div className="bg-black/80 backdrop-blur-md p-8 rounded-3xl border border-white/10 text-center shadow-2xl max-w-sm">
@@ -288,14 +320,14 @@ export default function ProposePage() {
           )}
 
         </div>
-      ) : (
-        /* --- SUCCESS STATE (THE FUN PART) --- */
+      )}
+      
+      {/* --- SUCCESS STATE (OFFICIAL CONTRACT) --- */}
+      {status === "accepted" && (
         <div className="fixed inset-0 z-50 flex flex-col items-center justify-center overflow-hidden">
           
-          {/* 1. The Stamp Card */}
           <div className="contract-stamp relative bg-[#fffbf0] text-black p-8 md:p-12 rounded-lg shadow-2xl max-w-md transform -rotate-12 border-8 border-double border-rose-500">
               
-              {/* Corner Tape */}
               <div className="absolute -top-6 left-1/2 -translate-x-1/2 w-32 h-12 bg-white/20 backdrop-blur-sm transform rotate-2 border border-white/40 shadow-sm"></div>
 
               <div className="flex justify-center mb-4">
@@ -310,21 +342,18 @@ export default function ProposePage() {
 
               <div className="text-center space-y-2">
                   <p className={`font-bold tracking-widest text-sm uppercase ${techMono.className}`}>Official Contract</p>
-                  <p className="text-xl font-handwriting">Signed by Tanya ❤️</p>
+                  <p className="text-xl font-medium font-serif italic">Signed by Tanya ❤️</p>
               </div>
 
-              {/* The Stamp Graphic */}
               <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 border-4 border-rose-500 rounded-full w-48 h-48 flex items-center justify-center opacity-20 animate-spin-slow pointer-events-none">
                   <span className="text-xs tracking-[0.3em] font-bold text-rose-500 uppercase">Official • Official • Official</span>
               </div>
 
-              {/* Stamp Mark */}
               <div className="absolute bottom-4 right-4 transform rotate-12">
                   <BadgeCheck size={60} className="text-green-600 fill-green-100" />
               </div>
           </div>
 
-          {/* 2. Cheeky Text Below */}
           <div className="mt-12 text-center animate-in slide-in-from-bottom duration-1000 delay-500 z-50">
               <p className="text-2xl md:text-3xl text-white font-bold mb-2">
                   Permanent Booking Hogai Samjho haaannn
