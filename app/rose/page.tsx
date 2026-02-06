@@ -5,7 +5,7 @@ import { useRouter } from "next/navigation";
 import Image from "next/image";
 import gsap from "gsap";
 import { Playfair_Display, Lato, Dancing_Script } from "next/font/google";
-import { Heart, Music, Bird } from "lucide-react"; 
+import { Heart, Music, Bird, Disc } from "lucide-react"; 
 
 // --- Fonts ---
 const playfair = Playfair_Display({ subsets: ["latin"], weight: ["400", "700"] });
@@ -39,20 +39,33 @@ export default function RosePage() {
   const [photoIndex, setPhotoIndex] = useState(0);
   const [isTrans, setIsTrans] = useState(false);
   const [imageLoaded, setImageLoaded] = useState(false);
+  const [isPlaying, setIsPlaying] = useState(false); // Music State
 
   // --- AUDIO LOGIC ---
   const enterGarden = () => {
-      // User Interaction = Browser allows audio
       if (audioRef.current) {
           audioRef.current.volume = 0.3; 
           audioRef.current.play().then(() => {
+              setIsPlaying(true);
               setStage("intro");
           }).catch(e => {
               console.error("Audio failed:", e);
+              setIsPlaying(false);
               setStage("intro"); 
           });
       } else {
           setStage("intro");
+      }
+  };
+
+  const toggleMusic = () => {
+      if (!audioRef.current) return;
+      if (isPlaying) {
+          audioRef.current.pause();
+          setIsPlaying(false);
+      } else {
+          audioRef.current.play();
+          setIsPlaying(true);
       }
   };
 
@@ -94,10 +107,9 @@ export default function RosePage() {
                   });
               }
 
-              // B. Birds (Simulated using small blurry shapes or SVGs if available, using simple divs here for motion)
-              // We will render actual SVG birds in the JSX return, here we animate them
+              // B. Birds
               gsap.to(".bird-glider", {
-                  x: "120vw", // Fly across screen
+                  x: "120vw", 
                   y: "random(-50, 50)",
                   duration: "random(15, 25)",
                   repeat: -1,
@@ -188,6 +200,23 @@ export default function RosePage() {
       {/* AUDIO PLAYER */}
       <audio ref={audioRef} loop src="/bg4.mp3" preload="auto" />
 
+      {/* --- FLOATING MUSIC BUTTON (Visible only after gate) --- */}
+      {stage !== 'gate' && (
+          <button 
+            onClick={toggleMusic}
+            className="fixed top-6 right-6 z-[60] w-10 h-10 bg-white/10 backdrop-blur-md rounded-full flex items-center justify-center border border-white/20 hover:scale-110 transition-transform active:scale-95 shadow-lg"
+          >
+              <div className={isPlaying ? "animate-spin-slow" : ""}>
+                  <Disc size={20} className="text-rose-200" />
+              </div>
+              {!isPlaying && (
+                  <div className="absolute inset-0 flex items-center justify-center">
+                      <div className="w-0.5 h-6 bg-rose-500 rotate-45 rounded-full" />
+                  </div>
+              )}
+          </button>
+      )}
+
       {/* BACKGROUND GRADIENT (Dynamic for Gate) */}
       <div className={`fixed inset-0 transition-all duration-1000 pointer-events-none z-0 ${stage === 'gate' ? 'bg-[radial-gradient(circle_at_center,_#500724_0%,_#090103_100%)]' : 'bg-[radial-gradient(circle_at_center,_#3f0a12_0%,_#000000_100%)] opacity-60'}`}></div>
 
@@ -218,7 +247,7 @@ export default function RosePage() {
               </h1>
               
               <p className={`text-xl md:text-2xl text-rose-100/80 mb-12 font-light ${handwriting.className}`}>
-                  "For my cutuuu....
+                  "For my Tulip...."
               </p>
 
               <button 

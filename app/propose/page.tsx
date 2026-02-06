@@ -62,29 +62,39 @@ export default function ProposePage() {
   // Status: 'initial' | 'sad' | 'accepted'
   const [status, setStatus] = useState("initial");
 
-  // --- 1. Animation on Load ---
+  // --- 1. Animation on Load & Reconsider ---
   useEffect(() => {
     if (status === "initial") {
         const ctx = gsap.context(() => {
           // Restore Background if returning from sad
           gsap.to(".main-bg", { filter: "grayscale(0%) brightness(1)", duration: 1 });
 
+          // Header Animation
           gsap.fromTo(".header-text",
             { y: 50, opacity: 0 },
             { y: 0, opacity: 1, duration: 1, ease: "power3.out", stagger: 0.2 }
           );
 
+          // Perks Animation (FIXED: Force Reset X and Rotation)
           gsap.fromTo(".perk-card",
-            { y: 100, opacity: 0, scale: 0.9 },
+            { 
+                y: 100, 
+                x: 0, // FIX: Explicitly reset X so they come back to center
+                rotation: 0, // FIX: Explicitly reset Rotation
+                opacity: 0, 
+                scale: 0.9 
+            },
             { 
               y: 0, 
+              x: 0,
+              rotation: 0,
               opacity: 1, 
               scale: 1, 
               duration: 0.8, 
               ease: "back.out(1.7)", 
               stagger: 0.1, 
-              delay: 0.5,
-              overwrite: "auto"
+              delay: 0.2,
+              overwrite: "auto" // Ensures previous "explosion" animations are killed
             }
           );
         }, containerRef);
@@ -100,8 +110,8 @@ export default function ProposePage() {
     const ctx = gsap.context(() => {
         // Explode Perks
         gsap.to(".perk-card", {
-            x: () => (Math.random() - 0.5) * window.innerWidth * 1.2, 
-            y: () => (Math.random() - 0.5) * window.innerHeight * 1.2, 
+            x: () => (Math.random() - 0.5) * window.innerWidth * 1.5, 
+            y: () => (Math.random() - 0.5) * window.innerHeight * 1.5, 
             rotation: () => Math.random() * 720 - 360, 
             opacity: 0,
             scale: 0,
@@ -120,10 +130,9 @@ export default function ProposePage() {
 
   // --- 3. Handle "Reconsider" Click ---
   const handleReconsider = () => {
+    // Setting status to 'initial' triggers the useEffect above
+    // which handles the "Assembly" animation and resets properties.
     setStatus("initial");
-    const ctx = gsap.context(() => {
-        // Elements return in useEffect [status] dependency
-    }, containerRef);
   };
 
   // --- 4. Handle "Yes" Click (FUN CELEBRATION) ---
@@ -321,7 +330,7 @@ export default function ProposePage() {
                   Permanent Booking Hogai Samjho😜
               </p>
               <p className="text-white/60 text-sm">
-                  (You are stuck with me forever hehe😉)
+                  (You are stuck with me forever hehe(hameshaaaaaaaaa...😉)
               </p>
           </div>
           
