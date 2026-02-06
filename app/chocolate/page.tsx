@@ -19,9 +19,11 @@ export default function ChocolatePage() {
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const containerRef = useRef<HTMLDivElement>(null);
   const meterRef = useRef<HTMLInputElement>(null);
+  const audioRef = useRef<HTMLAudioElement>(null); 
+  const introRef = useRef<HTMLDivElement>(null); 
   
   // --- STATES ---
-  const [gameStage, setGameStage] = useState<"meter" | "incoming" | "scratch" | "claimed">("meter"); 
+  const [gameStage, setGameStage] = useState<"intro" | "meter" | "incoming" | "scratch" | "claimed">("intro"); 
   const [meterValue, setMeterValue] = useState(0); 
   const [isRevealed, setIsRevealed] = useState(false);
   const [isWrapperReady, setIsWrapperReady] = useState(false);
@@ -33,6 +35,59 @@ export default function ChocolatePage() {
   const [isError, setIsError] = useState(false);
   
   const [showToast, setShowToast] = useState(false);
+
+  // --- 0. INTRO ANIMATION ---
+  useEffect(() => {
+    if (gameStage === "intro") {
+        const ctx = gsap.context(() => {
+            const tl = gsap.timeline({
+                onComplete: () => {
+                    gsap.to(introRef.current, {
+                        y: "-100%",
+                        duration: 1.5,
+                        ease: "power4.inOut",
+                        onComplete: () => setGameStage("meter")
+                    });
+                }
+            });
+
+            tl.fromTo(".intro-text-1", 
+                { opacity: 0, y: 20 },
+                { opacity: 1, y: 0, duration: 1.5, ease: "power2.out" }
+            )
+            .to(".intro-text-1", { opacity: 0, blur: 10, duration: 1, delay: 1.5 });
+
+            tl.fromTo(".intro-text-2", 
+                { opacity: 0, scale: 0.8 },
+                { opacity: 1, scale: 1, duration: 1, ease: "back.out(1.7)" }
+            )
+            .to(".intro-text-2", { opacity: 0, duration: 0.5, delay: 1 });
+
+            tl.fromTo(".intro-text-3", 
+                { opacity: 0, filter: "blur(0px)" },
+                { opacity: 1, duration: 1.5 }
+            )
+            .to(".intro-text-3", { 
+                filter: "blur(4px)", 
+                scaleY: 1.1, 
+                opacity: 0, 
+                duration: 2, 
+                ease: "power1.in",
+                delay: 0.5 
+            });
+
+        }, containerRef);
+        return () => ctx.revert();
+    }
+  }, [gameStage]);
+
+  // --- 1. AUDIO LOGIC ---
+  useEffect(() => {
+      if (gameStage === "incoming" && audioRef.current) {
+          audioRef.current.volume = 0.2; 
+          audioRef.current.play().catch((e) => console.log("Audio play blocked", e));
+      }
+  }, [gameStage]);
 
   // --- Helper: Create Crumbs ---
   const createCrumb = useCallback((forceExplosion = false) => {
@@ -90,7 +145,7 @@ export default function ChocolatePage() {
     }
   }, []);
 
-  // --- 1. Background Floating Oreos ---
+  // --- 2. Background Floating Oreos ---
   useEffect(() => {
     const ctx = gsap.context(() => {
       for (let i = 0; i < 20; i++) {
@@ -100,15 +155,14 @@ export default function ChocolatePage() {
     return () => ctx.revert();
   }, [createCrumb]);
 
-  // --- 2. Initialize Canvas (Draw wrapper immediately but keep hidden) ---
+  // --- 3. Initialize Canvas ---
   useEffect(() => {
-    // We only initialize the canvas drawing when we hit the 'scratch' stage to ensure dimensions are correct
     if (gameStage !== "scratch") return;
 
     const timer = setTimeout(() => {
         const canvas = canvasRef.current;
         if (!canvas) return;
-        const ctx = canvas.getContext("2d");
+        const ctx = canvas.getContext("2d", { willReadFrequently: true });
         if (!ctx) return;
 
         const parent = canvas.parentElement;
@@ -117,9 +171,7 @@ export default function ChocolatePage() {
             canvas.height = parent.clientHeight;
         }
 
-        // Draw the wrapper
         const drawWrapper = () => {
-            ctx.globalCompositeOperation = "source-over"; // Ensure we are drawing normally first
             ctx.fillStyle = "#3e005f"; 
             ctx.fillRect(0, 0, canvas.width, canvas.height);
 
@@ -154,22 +206,19 @@ export default function ChocolatePage() {
         };
 
         drawWrapper();
-        
-        // Prepare for scratching
         setIsWrapperReady(true);
 
-        // Entrance Animation
         gsap.fromTo(".scratch-card-container", 
             { scale: 0, rotation: -20 },
             { scale: 1, rotation: 0, duration: 0.8, ease: "elastic.out(1, 0.5)" }
         );
 
-    }, 100); // Small delay to ensure DOM layout is settled
+    }, 50);
 
     return () => clearTimeout(timer);
   }, [gameStage]);
 
-  // --- 3. TRANSITION LOGIC ---
+  // --- 4. TRANSITION LOGIC ---
   const triggerExplosion = () => {
       for(let i=0; i<30; i++) createCrumb(true); 
       gsap.to(containerRef.current, { 
@@ -186,10 +235,9 @@ export default function ChocolatePage() {
           }, 3000);
           return () => clearTimeout(timer);
       }
-  // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [gameStage]);
 
-  // --- 4. METER LOGIC ---
+  // --- 5. METER LOGIC ---
   const handleSliderChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     let val = parseInt(e.target.value);
     setMeterValue(val);
@@ -205,17 +253,36 @@ export default function ChocolatePage() {
             onComplete: () => {
                 setTimeout(() => {
                     setGameStage("incoming");
-                },4000);
+                }, 1500);
             }
         });
     }
   };
 
-  // --- 5. ROBUST SCRATCH LOGIC ---
-  const handleScratch = (e: any) => {
-    // Guard: Don't scratch if already revealed or wrapper isn't fully drawn yet
-    if (isRevealed || !isWrapperReady) return;
+  // --- 6. SCRATCH LOGIC (FIXED) ---
+  const checkRevealPercentage = (ctx: CanvasRenderingContext2D, width: number, height: number) => {
+      const imageData = ctx.getImageData(0, 0, width, height);
+      const pixels = imageData.data;
+      let transparentPixels = 0;
+      
+      // Check every 100th pixel for performance
+      for (let i = 3; i < pixels.length; i += 400) {
+          if (pixels[i] === 0) {
+              transparentPixels++;
+          }
+      }
 
+      const totalChecked = pixels.length / 400;
+      const percentage = (transparentPixels / totalChecked) * 100;
+
+      if (percentage > 40) { // Reveal if >40% scratched
+          setIsRevealed(true);
+          gsap.to(canvasRef.current, { opacity: 0, duration: 0.5 });
+      }
+  };
+
+  const handleScratch = (e: any) => {
+    if (isRevealed || !isWrapperReady) return;
     const canvas = canvasRef.current;
     const ctx = canvas?.getContext("2d", { willReadFrequently: true });
     if (!canvas || !ctx) return;
@@ -227,43 +294,18 @@ export default function ChocolatePage() {
     const x = clientX - rect.left;
     const y = clientY - rect.top;
 
-    // Set composite operation specifically for scratching now
     ctx.globalCompositeOperation = "destination-out";
-    
     ctx.beginPath();
-    ctx.arc(x, y, 40, 0, Math.PI * 2); 
+    ctx.arc(x, y, 40, 0, Math.PI * 2); // Brush size
     ctx.fill();
 
-    // Check Percentage (Throttled for performance could be added, but this is simple enough)
-    // Only check every 10th move roughly (simple math random check to reduce lag)
+    // Throttled check: only check roughly 20% of the time to avoid lag
     if (Math.random() > 0.8) {
-        checkRevealPercentage(canvas, ctx);
+        checkRevealPercentage(ctx, canvas.width, canvas.height);
     }
   };
 
-  const checkRevealPercentage = (canvas: HTMLCanvasElement, ctx: CanvasRenderingContext2D) => {
-      const imageData = ctx.getImageData(0, 0, canvas.width, canvas.height);
-      const pixels = imageData.data;
-      let transparentCount = 0;
-      
-      // Check alpha channel of every 10th pixel for performance
-      for (let i = 3; i < pixels.length; i += 40) {
-          if (pixels[i] === 0) {
-              transparentCount++;
-          }
-      }
-
-      const totalChecked = pixels.length / 40;
-      const percentage = (transparentCount / totalChecked) * 100;
-
-      // Reveal if more than 40% is scratched
-      if (percentage > 40) {
-          setIsRevealed(true);
-          gsap.to(canvas, { opacity: 0, duration: 0.5 });
-      }
-  };
-
-  // --- 6. Auth Handler ---
+  // --- 7. Auth Handler ---
   const handleAuthSubmit = (e: React.FormEvent) => {
       e.preventDefault();
       if (inputCode === SECRET_CODE) {
@@ -298,7 +340,24 @@ export default function ChocolatePage() {
       ref={containerRef}
       className={`relative w-full h-screen overflow-hidden bg-[#1a0b2e] text-white flex flex-col items-center justify-center ${lato.className}`}
     >
-      
+      {/* BACKGROUND AUDIO PLAYER */}
+      <audio ref={audioRef} loop src="bg7.mp3" preload="auto" />
+
+      {/* ================= INTRO LAYER (Deep Chocolate Background) ================= */}
+      {gameStage === 'intro' && (
+        <div ref={introRef} className="fixed inset-0 z-[100] bg-[#3e2723] flex flex-col items-center justify-center">
+            <h1 className={`intro-text-1 absolute text-2xl md:text-4xl text-[#fbbf24] font-serif text-center px-6 opacity-0 ${playfair.className}`}>
+                They say chocolate melts at 34°C...
+            </h1>
+            <h1 className={`intro-text-2 absolute text-3xl md:text-5xl text-white font-bold text-center px-6 opacity-0 ${titan.className}`}>
+                But me?
+            </h1>
+            <h1 className={`intro-text-3 absolute text-3xl md:text-5xl text-rose-300 font-light text-center px-6 opacity-0 ${playfair.className}`}>
+                I melt the second I see you.
+            </h1>
+        </div>
+      )}
+
       {showToast && (
         <div className="fixed top-20 z-[100] animate-in fade-in slide-in-from-top-5 duration-300">
             <div className="bg-[#fffbf0] text-[#3e005f] px-6 py-3 rounded-full shadow-[0_0_20px_rgba(251,191,36,0.6)] border-2 border-[#fbbf24] flex items-center gap-2">
@@ -310,12 +369,12 @@ export default function ChocolatePage() {
       )}
 
       {/* ================= STAGE 1: METER ================= */}
-      {gameStage === "meter" && (
+      {(gameStage === "intro" || gameStage === "meter") && (
           <div className="z-20 flex flex-col items-center text-center p-6 animate-in zoom-in duration-700 w-full max-w-md">
               <h2 className={`text-4xl md:text-5xl text-[#fbbf24] mb-8 ${titan.className} drop-shadow-lg`}>
                   Sweetness Check! 
               </h2>
-              <p className="text-white/80 mb-12 text-lg">How sweet is  my Tanya today?</p>
+              <p className="text-white/80 mb-12 text-lg">How sweet is my Tanya today?</p>
               
               <div className="relative w-full h-16 bg-white/10 rounded-full border-4 border-white/20 p-2 shadow-[0_0_30px_rgba(251,191,36,0.3)]">
                   <div className="absolute top-2 bottom-2 left-2 rounded-full bg-gradient-to-r from-rose-500 via-[#fbbf24] to-white transition-all duration-100" 
@@ -338,7 +397,7 @@ export default function ChocolatePage() {
 
               <div className="mt-8 h-8">
                   {meterValue > 90 ? (
-                      <p className="text-red-400 font-bold tracking-widest animate-pulse text-xl">Come On Cutuuu You are always 110% sweet..!!</p>
+                      <p className="text-red-400 font-bold tracking-widest animate-pulse text-xl">Come on you are 110% sweet everyday!!😉</p>
                   ) : (
                       <p className="text-white/50 text-sm">Drag right to measure...</p>
                   )}
