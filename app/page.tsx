@@ -88,7 +88,7 @@ const MusicPlayer = ({ shouldPlay }: { shouldPlay: boolean }) => {
     useEffect(() => {
         const audio = audioRef.current;
         if (!audio) return;
-        audio.volume = 0.5;
+        audio.volume = 0.4;
 
         const attemptPlay = () => {
             audio.play().then(() => {
@@ -362,7 +362,7 @@ function HubContent() {
   // --- FIXED: Handle Send Whatsapp ---
   // Simply opens the link and closes the modal, returning to the lock screen immediately.
   const handleSendWhatsapp = () => {
-      const text = encodeURIComponent(`Hun.... \n\n ${feelingText}`);
+      const text = encodeURIComponent(`Hun🤍.... \n\n ${feelingText}`);
       window.open(`https://wa.me/${YOUR_WHATSAPP_NUMBER}?text=${text}`, '_blank');
       
       // Close Modal & Reset immediately

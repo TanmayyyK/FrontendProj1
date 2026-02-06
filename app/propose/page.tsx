@@ -327,10 +327,10 @@ export default function ProposePage() {
           {/* 2. Cheeky Text Below */}
           <div className="mt-12 text-center animate-in slide-in-from-bottom duration-1000 delay-500 z-50">
               <p className="text-2xl md:text-3xl text-white font-bold mb-2">
-                  Permanent Booking Hogai Samjho😜
+                  Permanent Booking Hogai Samjho haaannn
               </p>
               <p className="text-white/60 text-sm">
-                  (You are stuck with me forever hehe(hameshaaaaaaaaa...😉)
+                  You are stuck with me forever hehe(hameshaaaaaaaaa...😉)
               </p>
           </div>
           
