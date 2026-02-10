@@ -20,7 +20,7 @@ const PROMISES = [
   { text: "To make you sleep every night. (Chahe Kitni hi Thand ho Balcony me LOL!! and I secretly love it..)", type: "normal" },
   
   // --- SMILE TRIGGER ---
-  { text: "I will always love your smile..(I mean kitna hi mood kharab ho aapki smile dekh leta hu it like releases my stress)", type: "smile_trigger" }, 
+  { text: "I will always love your smile..(I mean kitna hi mood kharab ho aapki smile dekh leta hu it like releases my stress", type: "smile_trigger" }, 
   
   { text: "To remember all your small things (Thoda bhoolne laga hu kya...????? but haa I will not forget anything imp to you and you know that...).", type: "normal" },
   { text: "To give you Emotional Solutions (Practical bhi kabhi kabhi hehhe)...", type: "normal" },
@@ -38,10 +38,10 @@ const PROMISES = [
   { text: "To Never Shout at you... (agar majak mai bhi karu to daant dia kar naaa... Chup mat Hoajaya kar okay!!!)", type: "normal" },
   
   // --- LUDO TRIGGER ---
-  { text: "Or haaa Ludo mai Bhi Jeetegi abse... (Haa tu hi jeeti thi waise Tukka tha mera waise rematch kab..?? hmmm bol bol.. Dar gai??)", type: "ludo_trigger" },
+  { text: "Or haaa Ludo mai Bhi Jeetegi abse... (Haa tu hi jeeti thi waise Tukka tha mera waise rematch kab..?? hmmm bol bol.. Dar gai??", type: "ludo_trigger" },
   
   { text: "To always Admire and Complement you Till I breathe (isme to expert hu haina??)", type: "normal" },
-  { text: "And hamesha Bolta Rhunga heheheh(That means I will never go silent on us...)", type: "normal" },
+  { text: "And hamesha Bolta Rhunga heheheh(That means I will never go silent on us...", type: "normal" },
 
   // --- THE FINAL PROMISE ---
   { text: "WE PROMISE EACH OTHER THAT WE WILL NEVER LEAVE EACH OTHER'S HAND NO MATTER HOW TOUGH THE TIME GETS..", type: "final" }
@@ -54,6 +54,7 @@ export default function PromisePage() {
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const containerRef = useRef<HTMLDivElement>(null);
   const threadRef = useRef<SVGPathElement>(null);
+  const mobileThreadRef = useRef<HTMLDivElement>(null); // New Ref for Mobile Thread
   
   // State
   const [isSigned, setIsSigned] = useState(false);
@@ -104,12 +105,26 @@ export default function PromisePage() {
         );
       });
 
-      // Red Thread
+      // Red Thread (Desktop SVG)
       if (threadRef.current) {
         const pathLength = threadRef.current.getTotalLength();
         gsap.set(threadRef.current, { strokeDasharray: pathLength, strokeDashoffset: pathLength });
         gsap.to(threadRef.current, {
             strokeDashoffset: 0,
+            ease: "none",
+            scrollTrigger: {
+                trigger: containerRef.current,
+                start: "top top",
+                end: "bottom bottom",
+                scrub: 1,
+            }
+        });
+      }
+
+      // Red Thread (Mobile Vertical Line)
+      if (mobileThreadRef.current) {
+        gsap.to(mobileThreadRef.current, {
+            scaleY: 1,
             ease: "none",
             scrollTrigger: {
                 trigger: containerRef.current,
@@ -246,14 +261,14 @@ export default function PromisePage() {
   const handleSend = () => {
       // ⚠️ UPDATE THIS NUMBER with your country code!
       // Example: "919999999999" for India
-      const phoneNumber = "919416008686"; 
+      const phoneNumber = "919876543210"; 
 
-      const text = encodeURIComponent(`Hun....❤️\n${userMessage}`);
+      const text = encodeURIComponent(`Hey Tanmay! I signed the contract. 📝\n\nHere are my promises to you:\n${userMessage}`);
       
       // Use 'phone' parameter to target a specific number
       window.open(`https://api.whatsapp.com/send?phone=${phoneNumber}&text=${text}`, '_blank');
       
-      // Redirect after a short delay
+      // Redirect after a short delay to allow the new tab to open
       setTimeout(() => {
           router.push("/");
       }, 1000);
@@ -270,7 +285,7 @@ export default function PromisePage() {
       <div className="fixed inset-0 z-0 bg-[#050202]" />
       <div className="fixed inset-0 opacity-20 bg-[url('https://grainy-gradients.vercel.app/noise.svg')] pointer-events-none z-0" />
       
-      {/* --- RED THREAD --- */}
+      {/* --- RED THREAD (DESKTOP) --- */}
       <svg className="fixed top-0 left-0 w-full h-full pointer-events-none z-10 hidden lg:block">
          <path 
             ref={threadRef}
@@ -282,9 +297,14 @@ export default function PromisePage() {
             className="drop-shadow-[0_0_10px_rgba(225,29,72,0.8)]"
          />
       </svg>
-      {/* Mobile/Tablet Thread */}
-      <div className="fixed left-6 lg:left-12 top-0 bottom-0 w-[1px] bg-rose-900/30 lg:hidden z-0">
-         <div className="w-full h-full bg-rose-500 origin-top transform scale-y-0 animate-scroll-thread" />
+
+      {/* --- RED THREAD (MOBILE/TABLET) --- */}
+      <div className="fixed left-6 lg:left-12 top-0 bottom-0 w-0.5 bg-rose-900/30 lg:hidden z-[1]">
+         <div 
+            ref={mobileThreadRef}
+            className="w-full h-full bg-rose-500 origin-top"
+            style={{ transform: "scaleY(0)" }}
+         />
       </div>
 
       {/* ================= OVERLAYS ================= */}
