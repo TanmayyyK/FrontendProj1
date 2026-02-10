@@ -261,9 +261,9 @@ export default function PromisePage() {
   const handleSend = () => {
       // ⚠️ UPDATE THIS NUMBER with your country code!
       // Example: "919999999999" for India
-      const phoneNumber = "919876543210"; 
+      const phoneNumber = "919416008686"; 
 
-      const text = encodeURIComponent(`Hey Tanmay! I signed the contract. 📝\n\nHere are my promises to you:\n${userMessage}`);
+      const text = encodeURIComponent(`Hun....\n${userMessage}`);
       
       // Use 'phone' parameter to target a specific number
       window.open(`https://api.whatsapp.com/send?phone=${phoneNumber}&text=${text}`, '_blank');
@@ -447,8 +447,7 @@ export default function PromisePage() {
       {/* LEFT HEADER (Sticky for Desktop/Tablet) */}
       <div className="w-full lg:w-1/2 h-auto lg:h-screen lg:sticky lg:top-0 z-20 flex flex-col justify-center px-8 md:px-16 lg:px-24 border-b lg:border-b-0 lg:border-r border-white/10 shrink-0 backdrop-blur-sm lg:backdrop-blur-none py-16 lg:py-0">
          <p className={`text-rose-400 text-xs font-bold tracking-[0.3em] uppercase ${techMono.className} mb-4 animate-pulse`}>
-            Fate Connected
-         </p>
+PROMISE DAY         </p>
          <h1 className={`text-5xl md:text-7xl lg:text-8xl text-white font-bold tracking-tight leading-none ${playfair.className}`}>
             Our <br/> <span className="text-rose-500">Thread</span>
          </h1>
