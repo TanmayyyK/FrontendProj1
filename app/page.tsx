@@ -53,8 +53,8 @@ const DAYS = [
     { id: "chocolate", title: "Chocolate Day", unlockAt: "2026-02-07T00:02:00", icon: "🍫",path: "/chocolate" }, 
     { id: "teddy", title: "Teddy Day", unlockAt: "2026-02-10T00:00:00", icon: "🧸" , path: "/teddy"}, 
     { id: "promise", title: "Promise Day", unlockAt: "2026-02-10T18:00:00", icon: "🤝",path: "/promise" }, 
-    { id: "hug", title: "Hug Day", unlockAt: "2026-02-13T00:00:00", icon: "🫂" , path: "/hug"}, 
-    { id: "kiss", title: "Kiss Day", unlockAt: "2026-02-13T00:00:00", icon: "💋" , path: "/kiss"} 
+    { id: "hug", title: "Hug Day", unlockAt: "2026-02-12T00:00:00", icon: "🫂" , path: "/hug"}, 
+    { id: "kiss", title: "Kiss Day", unlockAt: "2026-02-14T00:00:00", icon: "💋" , path: "/kiss"} 
 ];
 
 const OPEN_WHEN_MESSAGES = [
