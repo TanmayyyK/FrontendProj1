@@ -15,7 +15,7 @@ const signature = Great_Vibes({ subsets: ["latin"], weight: ["400"] });
 // --- CONFIGURATION ---
 const IS_DEV_MODE = false; 
 const START_DATE = new Date("2025-12-10T00:02:00"); 
-const PREMIERE_DATE = new Date("2026-02-14T00:00:00");
+const PREMIERE_DATE = new Date("2026-02-16T00:00:00");
 const YOUR_WHATSAPP_NUMBER = "919416008686"; // <--- REPLACE WITH YOUR NUMBER
 
 // --- PASSCODE CONFIG ---
@@ -53,8 +53,8 @@ const DAYS = [
     { id: "chocolate", title: "Chocolate Day", unlockAt: "2026-02-07T00:02:00", icon: "🍫",path: "/chocolate" }, 
     { id: "teddy", title: "Teddy Day", unlockAt: "2026-02-10T00:00:00", icon: "🧸" , path: "/teddy"}, 
     { id: "promise", title: "Promise Day", unlockAt: "2026-02-10T18:00:00", icon: "🤝",path: "/promise" }, 
-    { id: "hug", title: "Hug Day", unlockAt: "2026-02-12T00:00:00", icon: "🫂" , path: "/hug"}, 
-    { id: "kiss", title: "Kiss Day", unlockAt: "2026-02-14T00:00:00", icon: "💋" , path: "/kiss"} 
+    { id: "hug", title: "Hug Day", unlockAt: "2026-02-13T00:00:00", icon: "🫂" , path: "/hug"}, 
+    { id: "kiss", title: "Kiss Day", unlockAt: "2026-02-13T00:00:00", icon: "💋" , path: "/kiss"} 
 ];
 
 const OPEN_WHEN_MESSAGES = [
