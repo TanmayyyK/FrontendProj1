@@ -15,7 +15,7 @@ const signature = Great_Vibes({ subsets: ["latin"], weight: ["400"] });
 // --- CONFIGURATION ---
 const IS_DEV_MODE = false; 
 const START_DATE = new Date("2025-12-10T00:02:00"); 
-const PREMIERE_DATE = new Date("2026-02-19T00:00:00");
+const PREMIERE_DATE = new Date("2026-02-21T00:00:00");
 const YOUR_WHATSAPP_NUMBER = "919416008686"; // <--- REPLACE WITH YOUR NUMBER
 
 // --- PASSCODE CONFIG ---
@@ -54,7 +54,7 @@ const DAYS = [
     { id: "teddy", title: "Teddy Day", unlockAt: "2026-02-10T00:00:00", icon: "🧸" , path: "/teddy"}, 
     { id: "promise", title: "Promise Day", unlockAt: "2026-02-10T18:00:00", icon: "🤝",path: "/promise" }, 
     { id: "hug", title: "Hug Day", unlockAt: "2026-02-13T00:00:00", icon: "🫂" , path: "/hug"}, 
-    { id: "kiss", title: "Kiss Day", unlockAt: "2026-02-19T00:00:00", icon: "💋" , path: "/kiss"} 
+    { id: "kiss", title: "Kiss Day", unlockAt: "2026-02-21T00:00:00", icon: "💋" , path: "/kiss"} 
 ];
 
 const OPEN_WHEN_MESSAGES = [
@@ -62,7 +62,7 @@ const OPEN_WHEN_MESSAGES = [
     { id: "happy", label: "FEELING HAPPY", icon: <Sun size={14} />, color: "bg-yellow-900/40 border-yellow-500/30", text: "Photo Kheechooo Photo Khecchooo! You look beautiful when u smile (Your Smile is very precious to me)." },
     { id: "tired", label: "FEELING TIRED", icon: <Smile size={14} />, color: "bg-purple-900/40 border-purple-500/30", text: "Rest now, Dr. The world can wait. (Or Call me I will Listen to you..)" }
 ];
-
+ 
 const DAILY_SONGS = [ { title: "Perfect", artist: "Ed Sheeran" }, { title: "Tum Se Hi", artist: "Mohit Chauhan" }, { title: "Lover", artist: "Taylor Swift" }, { title: "Raataan Lambiyan", artist: "Jubin Nautiyal" }, { title: "Kesariya", artist: "Arijit Singh" } ];
 
 // --- HELPERS ---
